@@ -111,6 +111,10 @@ class ProcessController(object):
             for _idx  in listProcess.curselection():
                 _t_selected = listProcess.get(_idx)
                 if _t == _t_selected: _list_selected.append((_h,_t))
+                
+            for _idx  in listProcessActivated.curselection():
+                _t_selected = listProcessActivated.get(_idx)
+                if _t == _t_selected: _list_selected.append((_h,_t))
         
         _list_selected.sort(key=lambda x:x[1])        
 
