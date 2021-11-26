@@ -19,6 +19,7 @@ import win32api
 from ctypes import windll
 import PIL.Image
 from tkinter import *
+from slack import WebClient
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # 프로세스 확인
@@ -35,6 +36,7 @@ class ProcessController(object):
         self.thread = None
         self.stop_threads = threading.Event()
         self.dNoneAutoAttackAlertTime = dict()
+        self.dAttackedAlertTime = dict()
         self.lbState = tkinter.StringVar()
         self.lbState.set("대기 중")
         self.checkReturnToVill = tkinter.IntVar()
@@ -49,7 +51,9 @@ class ProcessController(object):
         self.tbSlackToken.set("xoxb-1436627767411-2747230415026-VHEhgdqFabJk3CvOSU5Yf3M3")
         self.tbChannel = tkinter.StringVar()
         self.tbChannel.set("#lineage_alert")
-        self.lineage_window_list = []        
+        self.lineage_window_list = [] 
+        self.slackClient = None
+        
     
     def findWnd(self):
         # 윈도우 리셋
@@ -108,6 +112,20 @@ class ProcessController(object):
                 self.dNoneAutoAttackAlertTime[wnd] = time.time()
                 return True
             return False
+        
+    def sendAttackedAlertMsgDelay(self, wnd, msg):
+        tNonAttackTerm = 7
+        if wnd not in self.dAttackedAlertTime: 
+            self.post_message(wnd + ' : ' + msg)
+            self.dAttackedAlertTime[wnd] = time.time()
+            return True
+        else:
+            _t = time.time() - self.dAttackedAlertTime[wnd]
+            if _t >= tNonAttackTerm: 
+                self.post_message(wnd + ' : ' + msg)
+                self.dAttackedAlertTime[wnd] = time.time()
+                return True
+            return False
 
     def setForegroundWndByDoubleClick(self, event):
         for i in listProcess.curselection():
@@ -121,10 +139,17 @@ class ProcessController(object):
     def setForegroundWnd(self, hwnd):
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(hwnd)
+        
+    def uploadFile(self, filePath):
+        if self.slackClient is None: return
+        
+        self.slackClient.files_upload(channels=self.tbChannel.get(), file=filePath)
 
     def onProcInThread(self, type=1):     
         # self.post_message('매크로 프로그램 시작')
-        self.lbState.set("매크로 실행 중")     
+        self.lbState.set("매크로 실행 중")   
+        
+        self.slackClient = WebClient(token=self.tbSlackToken.get())  
         loopTerm = int(self.tbLoopTerm.get())
         
         _imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)
@@ -195,8 +220,9 @@ class ProcessController(object):
         isDigit1 = self.isMatching(imgSrc[413:417,364:369], _imgCheck1Digit)
 
         if isAttacked:
-            if self.sendAlertMsgDelay(lw_title, '공격 받고 있습니다!'):
+            if self.sendAttackedAlertMsgDelay(lw_title, '공격 받고 있습니다!'):
                 self.click(xPos+(744*xRatio), yPos+(396*yRatio))
+                self.uploadFile('./screenshot.png')
 
         if isAutoAttacking:                        
             # print('HP OK')
@@ -211,7 +237,7 @@ class ProcessController(object):
                 self.returnToVillage(lw_hwnd, xPos, yPos)
                 self.post_message(lw_title + ' : 물약을 보충하십시오.')
 
-            elif isHPOK == False:
+            elif isHPOK == False:   
                 self.returnToVillage(lw_hwnd, xPos, yPos)
                 self.post_message(lw_title + ' : HP가 부족합니다. 공격받고 있을 수 있습니다.')
             elif isNoAttackByWeight:
