@@ -97,6 +97,47 @@ class ProcessController(object):
             x += 100
             y += 50  
             self.setForegroundWnd(lw_hwnd)    
+            time.sleep(0.1) 
+            
+    def arragngeWndSelected(self):
+        toplist = []
+        def enum_callback(hwnd, results):
+            results.append((hwnd, win32gui.GetWindowText(hwnd)))
+
+        win32gui.EnumWindows(enum_callback, toplist)
+        _list_selected = []
+        _list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]        
+        for (_h,_t) in _list:
+            for _idx  in listProcess.curselection():
+                _t_selected = listProcess.get(_idx)
+                if _t == _t_selected: _list_selected.append((_h,_t))
+        
+        _list_selected.sort(key=lambda x:x[1])        
+
+        screen_width = win32api.GetSystemMetrics(0)
+        screen_height = win32api.GetSystemMetrics(1)
+        x_init = 60
+        x = x_init
+        y = 60
+        dx = 50
+        dy = 45            
+        game_width = 800
+        game_height = 450
+
+        for (lw_hwnd, lw_title) in _list_selected:              
+            win32gui.MoveWindow(lw_hwnd, x, y, game_width, game_height, True)
+            if x + game_width + dx > screen_width:
+                # 가로길이가 넘어가서 짤리면 x 좌표초기화 및 y 좌표 한줄 아래로
+                x = x_init                
+                y += (game_height + dy)
+            else:
+                x += (game_width + dx)
+                
+            if y + game_height + dy > screen_height:
+                x = x_init
+                y = 90
+                
+            self.setForegroundWnd(lw_hwnd)    
             time.sleep(0.1)      
 
     def sendAlertMsgDelay(self, wnd, msg):
@@ -444,11 +485,14 @@ Label(root, text="채널명 :", anchor="w", width=22, height=1, padx=1, pady=2).
 tbChannel = Entry(root, width=32, textvariable=controller.tbChannel)
 tbChannel.place(x=160,y=194)
 
-btnArrangeWnd = Button(root, text="윈도우 정렬", command=controller.arragngeWnd)
+btnArrangeWnd = Button(root, text="윈도우 계단식 정렬", command=controller.arragngeWnd)
 btnArrangeWnd.place(x=8,y=222)
 
 btnFindWnd = Button(root, text="윈도우 찾기", command=controller.findWnd)
 btnFindWnd.place(x=420,y=202)
+
+btnFindWnd = Button(root, text="선택된 윈도우 바둑판 정렬", command=controller.arragngeWndSelected)
+btnFindWnd.place(x=520,y=202)
 
 btnSortWnd3 = Button(root, text="매크로 종료", command=controller.stop)
 btnSortWnd3.place(x=516,y=262)
