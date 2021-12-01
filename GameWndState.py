@@ -114,10 +114,16 @@ class GameWndState:
         res = cv2.matchTemplate(src, temp, cv2.TM_CCOEFF_NORMED)                    
         _, maxv, _, _ = cv2.minMaxLoc(res)
         return maxv >= thhold
+    
+    def getMatchPos(self,src,temp):
+        res = cv2.matchTemplate(src, temp, cv2.TM_CCOEFF_NORMED)                    
+        _, _, _, max_loc = cv2.minMaxLoc(res)
+        return max_loc
         
     def goBuyPosion(self, key):
         # 마을인지 체크하고 
         _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
+        _imgCheckShopBtn = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)
         
         isFinded = False
         for _ in range(0,5):
@@ -131,7 +137,11 @@ class GameWndState:
                 time.sleep(0.5)
                 self.click(496,227)
                 time.sleep(0.5)
-                self.click(536,225)
+                if self.isMatching(self.img, _imgCheckShopBtn):
+                    pos = self.getMatchPos(self.img, _imgCheckShopBtn)
+                    self.click(pos[0] + 5,pos[1] + 5)
+                else:
+                    self.click(536,225)
                 isFinded = True
                 self.state = GWState.GO_BUY_POSION
                 self.tAction = time.time()
@@ -175,3 +185,9 @@ class GameWndState:
         if (time.time() - self.tAction) >= 120:
             self.click(736,257)
             self.state = GWState.NORMAL 
+            
+            
+# 상점 이동 탐색 범위            
+# 440, 92, 164, 286
+# checkShopBtnWithMove
+
