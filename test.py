@@ -20,6 +20,7 @@ from ctypes import windll
 import PIL.Image
 from tkinter import *
 from slack import WebClient
+from GameWndState import GameWndState
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # 프로세스 확인
@@ -44,7 +45,7 @@ class ProcessController(object):
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
         self.tbLoopTerm = tkinter.StringVar()
-        self.tbLoopTerm.set("3")
+        self.tbLoopTerm.set("1")
         self.tbNonAttack = tkinter.StringVar()
         self.tbNonAttack.set("300")
         self.tbSlackToken = tkinter.StringVar()
@@ -53,34 +54,36 @@ class ProcessController(object):
         self.tbChannel.set("#lineage_alert")
         self.lineage_window_list = [] 
         self.slackClient = None
+    
+    def refreshWnds(self):
+        toplist = []
+        self.lineage_window_list = []
+        def enum_callback(hwnd, results):
+            results.append((hwnd, win32gui.GetWindowText(hwnd)))
+
+        win32gui.EnumWindows(enum_callback, toplist)
+        _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
+        for (_h, _t) in _wnds:
+            gw = GameWndState(_h, _t)
+            self.lineage_window_list.append(gw)
+            print(gw)
         
+        self.lineage_window_list.sort(key=lambda _gw: _gw.name, reverse=True)
+                
     
     def findWnd(self):
         # 윈도우 리셋
         listProcess.delete(0, END)
         listProcessActivated.delete(0, END)
-        toplist = []
-        def enum_callback(hwnd, results):
-            results.append((hwnd, win32gui.GetWindowText(hwnd)))
-
-        win32gui.EnumWindows(enum_callback, toplist)
-        self.lineage_window_list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
-        self.lineage_window_list.sort(key=lambda x:x[1])
+        self.refreshWnds()        
 
         cnt = 0
-        for (_,title) in self.lineage_window_list:
-            listProcess.insert(cnt, title)
+        for _gw in self.lineage_window_list:
+            listProcess.insert(cnt, _gw.name)
             cnt += 1
 
-    def arragngeWnd(self):
-        # 윈도우 찾기
-        toplist = []
-        def enum_callback(hwnd, results):
-            results.append((hwnd, win32gui.GetWindowText(hwnd)))
-
-        win32gui.EnumWindows(enum_callback, toplist)
-        self.lineage_window_list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
-        self.lineage_window_list.sort(key=lambda x:x[1])
+    def arragngeWnd(self):    
+        self.refreshWnds()
 
         screen_width = win32api.GetSystemMetrics(0)
         screen_height = win32api.GetSystemMetrics(1)
@@ -92,11 +95,11 @@ class ProcessController(object):
         game_width = 800
         game_height = 450
 
-        for (lw_hwnd, lw_title) in self.lineage_window_list:              
-            win32gui.MoveWindow(lw_hwnd, x, y, game_width, game_height, True)             
+        for _gw in self.lineage_window_list:              
+            win32gui.MoveWindow(_gw.hwnd, x, y, game_width, game_height, True)             
             x += 100
             y += 50  
-            self.setForegroundWnd(lw_hwnd)    
+            self.setForegroundWnd(_gw.hwnd)    
             time.sleep(0.1) 
             
     def arragngeWndSelected(self):
@@ -128,16 +131,15 @@ class ProcessController(object):
         game_width = 800
         game_height = 450
 
-        for (lw_hwnd, lw_title) in _list_selected:              
-            win32gui.MoveWindow(lw_hwnd, x, y, game_width, game_height, True)
-            if x + game_width + dx > screen_width:
-                # 가로길이가 넘어가서 짤리면 x 좌표초기화 및 y 좌표 한줄 아래로
-                x = x_init                
+        print(screen_width, screen_height)
+        for (lw_hwnd, lw_title) in _list_selected:   
+            if (x + game_width) > screen_width:
+                x = x_init
                 y += (game_height + dy)
-            else:
-                x += (game_width + dx)
+            win32gui.MoveWindow(lw_hwnd, x, y, game_width, game_height, True)
+            x += (game_width + dx)               
                 
-            if y + game_height + dy > screen_height:
+            if (y + game_height + dy) > screen_height:
                 x = x_init
                 y = 90
                 
@@ -201,7 +203,9 @@ class ProcessController(object):
                
 
         while not self.stop_threads.is_set():      
-            for (lw_hwnd, lw_title) in self.lineage_window_list:    
+            for _gw in self.lineage_window_list:    
+                lw_hwnd = _gw.hwnd
+                lw_title = _gw.name
                 try:         
                     activatedWndList = np.array(listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
@@ -213,7 +217,7 @@ class ProcessController(object):
                     # win32gui.SetForegroundWindow(lw_hwnd)
                     
                     # print(rect, xRatio, yRatio)
-                    time.sleep(0.3)
+                    # time.sleep(0.3)
                     
                     imgSrc = cv2.imread('screenshot.png', cv2.IMREAD_COLOR) 
                     imgSrc = cv2.resize(imgSrc, dsize=(800,450))
