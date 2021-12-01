@@ -20,7 +20,7 @@ from ctypes import windll
 import PIL.Image
 from tkinter import *
 from slack import WebClient
-from GameWndState import GameWndState
+from GameWndState import GameWndState, GWState
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # 프로세스 확인
@@ -65,8 +65,7 @@ class ProcessController(object):
         _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
         for (_h, _t) in _wnds:
             gw = GameWndState(_h, _t)
-            self.lineage_window_list.append(gw)
-            print(gw)
+            self.lineage_window_list.append(gw)            
         
         self.lineage_window_list.sort(key=lambda _gw: _gw.name, reverse=True)
                 
@@ -199,46 +198,48 @@ class ProcessController(object):
         self.slackClient = WebClient(token=self.tbSlackToken.get())  
         loopTerm = int(self.tbLoopTerm.get())
         
-        _imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)
-               
+        _imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
 
-        while not self.stop_threads.is_set():      
-            for _gw in self.lineage_window_list:    
+        while not self.stop_threads.is_set():   
+            _gw: GameWndState   
+            for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
                 try:         
                     activatedWndList = np.array(listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
-                        continue;
-                    self.screenshot_inactive(lw_hwnd)
+                        continue;                    
+                    
+                    
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
+                    if _gw.screenshot() == False:
+                        print('screenshot failed..', _gw)
+                        continue
 
-                    # shell.SendKeys('%')
-                    # win32gui.SetForegroundWindow(lw_hwnd)
-                    
-                    # print(rect, xRatio, yRatio)
-                    # time.sleep(0.3)
-                    
-                    imgSrc = cv2.imread('screenshot.png', cv2.IMREAD_COLOR) 
-                    imgSrc = cv2.resize(imgSrc, dsize=(800,450))
-
-                    isPowerSaveMode = self.isMatching(imgSrc[11:14,764:776], _imgCheckSavePower) != True
+                    isPowerSaveMode = _gw.isMatching(_gw.getImg(764,11,12,3), _imgCheckSavePower) != True
+                    # 절전모드가 아닌 상태에서
+                    # 귀환 상태인지 체크 -> 마을인지 체크 -> 상점 물약 구매 -> 상점인지 체크 -> 자동 구매 -> 이동 -> 자동사냥 -> 모드 종료
+                    if _gw.state == GWState.RETURN_TO_VILL:
+                        _gw.goBuyPosion(self.tbShortcut.get())
+                        continue
+                    elif _gw.state == GWState.GO_BUY_POSION:
+                        self.post_message
+                        if _gw.checkInShop() == False:
+                            self.sendAlertMsgDelay(_gw.name, '상점 이동에 실패 했습니다')
+                        continue
+                    elif _gw.state == GWState.GO_HUNT:
+                        _gw.checkGoHunt()
+                        continue
 
                     # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
-                    rect = win32gui.GetWindowRect(lw_hwnd)                    
-                    xPos = rect[0]
-                    yPos = rect[1]
-                    xRatio = (rect[2] - rect[0]) / 800
-                    yRatio = (rect[3] - rect[1]) / 450
-
                     if isPowerSaveMode != True:
-                        self.goSavePower(lw_hwnd, xPos, yPos, xRatio, yRatio) 
+                        self.goSavePower(_gw) 
                         continue                    
 
                     if isPowerSaveMode:
-                        self.processOnPowerSaveMode(imgSrc, lw_title, lw_hwnd)
+                        self.processOnPowerSaveMode(_gw)
                     else:
-                        self.processOnNormalMode(imgSrc, lw_title, lw_hwnd)
+                        self.processOnNormalMode(_gw)
                     
                 except Exception as e:
                     print('error', e, lw_title)
@@ -246,12 +247,8 @@ class ProcessController(object):
             
             time.sleep(loopTerm)
 
-    def processOnPowerSaveMode(self, imgSrc, lw_title, lw_hwnd):
-        rect = win32gui.GetWindowRect(lw_hwnd)                    
-        xPos = rect[0]
-        yPos = rect[1]
-        xRatio = (rect[2] - rect[0]) / 800
-        yRatio = (rect[3] - rect[1]) / 450
+    def processOnPowerSaveMode(self, _gw:GameWndState):
+        rect = win32gui.GetWindowRect(_gw.hwnd)
 
         _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
         _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
@@ -259,52 +256,47 @@ class ProcessController(object):
         _imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)        
         _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
         # print('auto attack')
-        isAutoAttacking = self.isMatching(imgSrc[290:329,324:477], _imgCheckAutoAttack)
+        isAutoAttacking = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAutoAttack)
         # win32gui.BringWindowToTop(lw_hwnd)
 
         # print('attacked')
-        isAttacked = self.isMatching(imgSrc[290:329,324:477], _imgCheckAttacked)
+        isAttacked = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAttacked)
 
         # print('isDigit1')
-        isDigit1 = self.isMatching(imgSrc[413:417,364:369], _imgCheck1Digit)
+        isDigit1 = _gw.isMatching(_gw.img[413:417,364:369], _imgCheck1Digit)
 
         if isAttacked:
-            if self.sendAttackedAlertMsgDelay(lw_title, '공격 받고 있습니다!'):
-                self.click(xPos+(744*xRatio), yPos+(396*yRatio))
+            if self.sendAttackedAlertMsgDelay(_gw.name, '공격 받고 있습니다!'):
+                _gw.click(744, 396)
+                # self.click(xPos+(744*xRatio), yPos+(396*yRatio))
                 self.uploadFile('./screenshot.png')
 
         if isAutoAttacking:                        
             # print('HP OK')
-            isHPOK = self.isMatching(imgSrc[24:31,68:110], _imgCheckHP) == False
+            isHPOK = _gw.isMatching(_gw.img[24:31,68:110], _imgCheckHP) == False
 
             # print('Weight')
             isNoAttackByWeight = False
-            isNoAttackByWeight = self.isMatching(imgSrc[420:430,410:445], _imgCheckNoAttackByWeight)                        
+            isNoAttackByWeight = _gw.isMatching(_gw.img[420:430,410:445], _imgCheckNoAttackByWeight)                        
             
             if isDigit1:
                 # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
-                self.returnToVillage(lw_hwnd, xPos, yPos)
-                self.post_message(lw_title + ' : 물약을 보충하십시오.')
+                _gw.returnToVillage(self.tbShortcut.get())                
+                self.post_message(_gw.name + ' : 물약을 보충하십시오.')
 
             elif isHPOK == False:   
-                self.returnToVillage(lw_hwnd, xPos, yPos)
-                self.post_message(lw_title + ' : HP가 부족합니다. 공격받고 있을 수 있습니다.')
+                _gw.returnToVillage(self.tbShortcut.get())
+                self.post_message(_gw.name + ' : HP가 부족합니다. 공격받고 있을 수 있습니다.')
             elif isNoAttackByWeight:
-                self.sendAlertMsgDelay(lw_title, '가방이 가득차서 공격할 수 없습니다.')
+                self.sendAlertMsgDelay(_gw.name, '가방이 가득차서 공격할 수 없습니다.')
         else:
-            self.sendAlertMsgDelay(lw_title, '대기 중입니다.')
+            self.sendAlertMsgDelay(_gw.name, '대기 중입니다.')
 
-    def processOnNormalMode(self, imgSrc, lw_title, lw_hwnd):
+    def processOnNormalMode(self, _gw:GameWndState):
         _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
-        isCheckNoVill = self.isMatching(imgSrc, _imgCheckVill)
-        print('no vill', isCheckNoVill)
+        isCheckNoVill = self.isMatching(_gw.img, _imgCheckVill)
         if isCheckNoVill:
-            self.key_press(lw_hwnd, ord(self.tbShortcut.get().upper()))
-
-    def isMatching(self,src,temp):
-        res = cv2.matchTemplate(src, temp, cv2.TM_CCOEFF_NORMED)                    
-        _, maxv, _, _ = cv2.minMaxLoc(res)
-        return maxv >= 0.7
+            self.key_press(_gw.img, ord(self.tbShortcut.get().upper()))    
 
     def start(self, type=1):
         self.stop_threads.clear()
@@ -319,22 +311,13 @@ class ProcessController(object):
         tbChannel["state"] = 'disabled'
         checkReturnToVill["state"] = 'disabled'
 
-    def returnToVillage(self, hwnd, xPos, yPos):
-        if self.checkReturnToVill.get() != 1: return
-
-        self.key_press(hwnd, win32con.VK_ESCAPE)
-        time.sleep(1)
-        # pyautogui.moveTo(xPos + 600, yPos + 400)
-        # pyautogui.click()
-        self.key_press(hwnd, ord(self.tbShortcut.get().upper()))
-
-    def goSavePower(self, hwnd, xPos, yPos, xRatio, yRatio):
-        self.key_press(hwnd, ord('G'))
+    def goSavePower(self, gw):
+        self.key_press(gw.hwnd, ord('G'))
         time.sleep(0.8)
         
         shell.SendKeys('%')
-        win32gui.SetForegroundWindow(hwnd)        
-        self.click(xPos + (400 * xRatio), yPos + (220 * yRatio))
+        win32gui.SetForegroundWindow(gw.hwnd)
+        gw.click(400, 220)
         time.sleep(0.8)
 
     def click(self, x, y):
@@ -373,52 +356,6 @@ class ProcessController(object):
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)
         win32gui.SendMessage(hwnd, win32con.WM_KEYUP, vk_key, 0)
-
-    def mouse_left_click(self, hwnd, x, y):
-        # x += Window.x
-        # y += Window.y
-        lParam = y <<15 | x
-        win32gui.SendMessage(hwnd, win32con.WM_LBUTTONDOWN, 1, lParam)
-        win32gui.SendMessage(hwnd, win32con.WM_LBUTTONUP,0, lParam)
-
-    def screenshot_inactive(self, hwnd):
-        # Change the line below depending on whether you want the whole window
-        # or just the client area. 
-        #left, top, right, bot = win32gui.GetClientRect(hwnd)
-        left, top, right, bot = win32gui.GetWindowRect(hwnd)
-        w = right - left
-        h = bot - top
-
-        hwndDC = win32gui.GetWindowDC(hwnd)
-        mfcDC  = win32ui.CreateDCFromHandle(hwndDC)
-        saveDC = mfcDC.CreateCompatibleDC()
-
-        saveBitMap = win32ui.CreateBitmap()
-        saveBitMap.CreateCompatibleBitmap(mfcDC, w, h)
-
-        saveDC.SelectObject(saveBitMap)
-
-        # Change the line below depending on whether you want the whole window
-        # or just the client area. 
-        #result = windll.user32.PrintWindow(hwnd, saveDC.GetSafeHdc(), 1)
-        result = windll.user32.PrintWindow(hwnd, saveDC.GetSafeHdc(), 3)
-
-        bmpinfo = saveBitMap.GetInfo()
-        bmpstr = saveBitMap.GetBitmapBits(True)
-
-        im = PIL.Image.frombuffer(
-            'RGB',
-            (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
-            bmpstr, 'raw', 'BGRX', 0, 1)
-
-        win32gui.DeleteObject(saveBitMap.GetHandle())
-        saveDC.DeleteDC()
-        mfcDC.DeleteDC()
-        win32gui.ReleaseDC(hwnd, hwndDC)
-
-        if result == 1:
-            #PrintWindow Succeeded
-            im.save("screenshot.png")
 
     def moveActivate(self):
         for i in listProcess.curselection():
