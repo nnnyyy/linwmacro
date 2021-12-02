@@ -199,6 +199,7 @@ class ProcessController(object):
         loopTerm = int(self.tbLoopTerm.get())
         
         _imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
+        _imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)  
 
         while not self.stop_threads.is_set():   
             _gw: GameWndState   
@@ -214,18 +215,22 @@ class ProcessController(object):
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
                     if _gw.screenshot() == False:
                         print('screenshot failed..', _gw)
-                        continue
-
+                        continue                    
+                
                     isPowerSaveMode = _gw.isMatching(_gw.getImg(764,11,12,3), _imgCheckSavePower) != True
+                    isPowerSaveMenu = _gw.isMatching(_gw.img, _imgPowerSaveMenu)
+                    if isPowerSaveMenu == True:
+                        self.key_press(lw_hwnd, win32con.VK_ESCAPE)
+                        continue
+                        
                     # 절전모드가 아닌 상태에서
                     # 귀환 상태인지 체크 -> 마을인지 체크 -> 상점 물약 구매 -> 상점인지 체크 -> 자동 구매 -> 이동 -> 자동사냥 -> 모드 종료
                     if _gw.state == GWState.RETURN_TO_VILL:
                         _gw.goBuyPosion(self.tbShortcut.get())
                         continue
                     elif _gw.state == GWState.GO_BUY_POSION:
-                        self.post_message
                         if _gw.checkInShop() == False:
-                            self.sendAlertMsgDelay(_gw.name, '상점 이동에 실패 했습니다')
+                            self.sendAlertMsgDelay(_gw.name, '상점 이동에 실패 했습니다')                            
                         continue
                     elif _gw.state == GWState.GO_HUNT:
                         _gw.checkGoHunt()
@@ -255,20 +260,16 @@ class ProcessController(object):
         _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)
         _imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)        
         _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
-        # print('auto attack')
+        
         isAutoAttacking = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAutoAttack)
-        # win32gui.BringWindowToTop(lw_hwnd)
-
-        # print('attacked')
+        
         isAttacked = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAttacked)
-
-        # print('isDigit1')
+        
         isDigit1 = _gw.isMatching(_gw.img[413:417,364:369], _imgCheck1Digit)
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay(_gw.name, '공격 받고 있습니다!'):
-                _gw.click(744, 396)
-                # self.click(xPos+(744*xRatio), yPos+(396*yRatio))
+                _gw.click(744, 396)                
                 self.uploadFile('./screenshot.png')
 
         if isAutoAttacking:                        

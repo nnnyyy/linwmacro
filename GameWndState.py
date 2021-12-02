@@ -129,39 +129,44 @@ class GameWndState:
         for _ in range(0,5):
             isCheckNoVill = self.isMatching(self.img, _imgCheckVill)            
             if isCheckNoVill: 
+                print(self, '마을이 아닙니다')
                 self.key_press(ord(key.upper()))
-                time.sleep(0.5)
+                time.sleep(1.5)
                 self.screenshot()
-            else:                
+            else:
+                print(self, '마을입니다')
                 self.click(709,315)
                 time.sleep(0.5)
                 self.click(496,227)
-                time.sleep(0.5)
+                time.sleep(1.5)                
+                self.screenshot()
                 if self.isMatching(self.img, _imgCheckShopBtn):
                     pos = self.getMatchPos(self.img, _imgCheckShopBtn)
                     self.click(pos[0] + 5,pos[1] + 5)
+                    print(self, '잡화상점으로 이동합니다')
+                    self.state = GWState.GO_BUY_POSION
+                    self.tAction = time.time()
                 else:
-                    self.click(536,225)
-                isFinded = True
-                self.state = GWState.GO_BUY_POSION
-                self.tAction = time.time()
+                    # 일단 다른 캐릭에게 처리 양보
+                    self.click(224,302)
+                    time.sleep(0.3)
+                
                 break
             
         time.sleep(0.3)
-        
-        if isFinded == False:
-            self.state = GWState.NORMAL
             
     def checkInShop(self):
         _check = cv2.imread('./image/checkshop.png', cv2.IMREAD_COLOR)        
         _checkAutoMoveBtn = cv2.imread('./image/checkautomovebtn.png', cv2.IMREAD_COLOR)
         if self.isMatching(self.getImg(358,61,80,32), _check):  
+            print(self, '잡화상점입니다')
             self.click(643,411)
             time.sleep(0.5)
             self.click(734,411)
             time.sleep(0.3)
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
+            print(self, '맵 이동 시작')
             self.key_press(ord('M'))
             time.sleep(1)
             self.click(31,331)
@@ -171,32 +176,33 @@ class GameWndState:
             self.screenshot()
             if self.isMatching(self.img, _checkAutoMoveBtn):
                 _pos = self.getMatchPos(self.img, _checkAutoMoveBtn)
-                cv2.imwrite('./test1.png', self.img)
                 print(_pos)
                 self.click(_pos[0],_pos[1] + 5)
             else:
                 self.click(31,372)
                 time.sleep(1.5)
                 self.screenshot()
-                cv2.imwrite('./test2.png', self.img)
                 if self.isMatching(self.img, _checkAutoMoveBtn):
                     _pos = self.getMatchPos(self.img, _checkAutoMoveBtn)
                     self.click(_pos[0],_pos[1])
-                    print(_pos)
                 else:
+                    print(self, '맵 이동 실패')
                     self.key_press(win32con.VK_ESCAPE)
                     time.sleep(0.3)
                     self.key_press(win32con.VK_ESCAPE)
                     time.sleep(0.3)
                     self.state = GWState.NORMAL
-                    return
+                    return False
             
             self.state = GWState.GO_HUNT
             self.tAction = time.time()
+            print(self, '사냥하러')
             return True
         else:
-            if (time.time() - self.tAction) >= 60:                
-                self.state = GWState.NORMAL
+            if (time.time() - self.tAction) >= 60:
+                # 60초 안에 상점에 도착하지 않으면 처음부터 다시 시도한다
+                print(self, '상점 도착 실패')
+                self.state = GWState.RETURN_TO_VILL                
                 return False
             
             return True
@@ -204,10 +210,18 @@ class GameWndState:
         return True
             
     def checkGoHunt(self):
+        _checkmap = cv2.imread('./image/checkworldmap.png', cv2.IMREAD_COLOR)  
         # 사냥 가는 길 체크가 어려움. 시간으로 체크한다
-        if (time.time() - self.tAction) >= 120:
-            self.click(736,257)
+        # 고급 이미지 프로세싱 필요
+        if (time.time() - self.tAction) >= 100:
+            print(self, '자동 사냥 시작')
+            self.key_press(0xBD)
+            #self.click(736,257)
             self.state = GWState.NORMAL 
+        elif self.isMatching(self.img, _checkmap):
+            # 사냥 이동 중에 월드 맵 상태가 가끔 되는데 이유는 모르겠고 일단 풀어주자
+            self.key_press(win32con.VK_ESCAPE)
+            time.sleep(0.3)
             
             
 # 상점 이동 탐색 범위            
