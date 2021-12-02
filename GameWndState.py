@@ -123,7 +123,7 @@ class GameWndState:
     def goBuyPosion(self, key):
         # 마을인지 체크하고 
         _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
-        _imgCheckShopBtn = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)
+        _imgCheckShopBtn = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)        
         
         isFinded = False
         for _ in range(0,5):
@@ -153,7 +153,8 @@ class GameWndState:
             self.state = GWState.NORMAL
             
     def checkInShop(self):
-        _check = cv2.imread('./image/checkshop.png', cv2.IMREAD_COLOR)
+        _check = cv2.imread('./image/checkshop.png', cv2.IMREAD_COLOR)        
+        _checkAutoMoveBtn = cv2.imread('./image/checkautomovebtn.png', cv2.IMREAD_COLOR)
         if self.isMatching(self.getImg(358,61,80,32), _check):  
             self.click(643,411)
             time.sleep(0.5)
@@ -166,8 +167,30 @@ class GameWndState:
             self.click(31,331)
             time.sleep(0.6)
             self.click(31,372)
-            time.sleep(0.6)
-            self.click(478,224)
+            time.sleep(1)
+            self.screenshot()
+            if self.isMatching(self.img, _checkAutoMoveBtn):
+                _pos = self.getMatchPos(self.img, _checkAutoMoveBtn)
+                cv2.imwrite('./test1.png', self.img)
+                print(_pos)
+                self.click(_pos[0],_pos[1] + 5)
+            else:
+                self.click(31,372)
+                time.sleep(1.5)
+                self.screenshot()
+                cv2.imwrite('./test2.png', self.img)
+                if self.isMatching(self.img, _checkAutoMoveBtn):
+                    _pos = self.getMatchPos(self.img, _checkAutoMoveBtn)
+                    self.click(_pos[0],_pos[1])
+                    print(_pos)
+                else:
+                    self.key_press(win32con.VK_ESCAPE)
+                    time.sleep(0.3)
+                    self.key_press(win32con.VK_ESCAPE)
+                    time.sleep(0.3)
+                    self.state = GWState.NORMAL
+                    return
+            
             self.state = GWState.GO_HUNT
             self.tAction = time.time()
             return True

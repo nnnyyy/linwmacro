@@ -282,7 +282,7 @@ class ProcessController(object):
             if isDigit1:
                 # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
                 _gw.returnToVillage(self.tbShortcut.get())                
-                self.post_message(_gw.name + ' : 물약을 보충하십시오.')
+                self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
 
             elif isHPOK == False:   
                 _gw.returnToVillage(self.tbShortcut.get())
