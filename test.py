@@ -266,6 +266,8 @@ class ProcessController(object):
         isAttacked = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAttacked)
         
         isDigit1 = _gw.isMatching(_gw.img[413:417,364:369], _imgCheck1Digit)
+        
+        if _gw.updateAutoAttack(True, isAutoAttacking): return
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay(_gw.name, '공격 받고 있습니다!'):
