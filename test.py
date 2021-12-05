@@ -72,6 +72,9 @@ class ProcessController(object):
     
     def findWnd(self):
         # 윈도우 리셋
+        list1 = np.array(listProcess.get(0,END))
+        list2 = np.array(listProcessActivated.get(0,END))
+        
         listProcess.delete(0, END)
         listProcessActivated.delete(0, END)
         self.refreshWnds()        
@@ -253,8 +256,6 @@ class ProcessController(object):
             time.sleep(loopTerm)
 
     def processOnPowerSaveMode(self, _gw:GameWndState):
-        rect = win32gui.GetWindowRect(_gw.hwnd)
-
         _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
         _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
         _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)
@@ -267,7 +268,7 @@ class ProcessController(object):
         
         isDigit1 = _gw.isMatching(_gw.img[413:417,364:369], _imgCheck1Digit)
         
-        if _gw.updateAutoAttack(True, isAutoAttacking): return
+        if _gw.updateAutoAttack(True, isAutoAttacking, self.tbShortcut.get()): return
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay(_gw.name, '공격 받고 있습니다!'):
@@ -285,11 +286,11 @@ class ProcessController(object):
             if isDigit1:
                 # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
                 _gw.returnToVillage(self.tbShortcut.get())                
-                self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
+                # self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
 
             elif isHPOK == False:   
                 _gw.returnToVillage(self.tbShortcut.get())
-                self.post_message(_gw.name + ' : HP가 부족합니다. 공격받고 있을 수 있습니다.')
+                # self.post_message(_gw.name + ' : HP가 부족합니다.')
             elif isNoAttackByWeight:
                 self.sendAlertMsgDelay(_gw.name, '가방이 가득차서 공격할 수 없습니다.')
         else:
@@ -383,7 +384,7 @@ def on_closing():
 # UI
 root = Tk()
 root.title("MogulMogul v1.0")
-root.geometry("800x300+100+100")
+root.geometry("800x500+100+100")
 root.resizable(False, False)
 
 screen_width = root.winfo_screenwidth()

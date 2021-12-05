@@ -64,6 +64,8 @@ class GameWndState:
     def setState(self, _state:GWState) :
         self.state = _state
         self.tAction = time.time()    
+        if _state == GWState.GO_HUNT:
+            self.goHuntCntEnd = 0
         
     """
     스크린샷 - Minimize나 화면 잠금 상태가 아니면 스크린샷을 찍는다        
@@ -190,7 +192,7 @@ class GameWndState:
             print(self, '사냥하러')
             return True
         else:
-            if (time.time() - self.tAction) >= 60:
+            if (time.time() - self.tAction) >= 30:
                 # 60초 안에 상점에 도착하지 않으면 처음부터 다시 시도한다
                 print(self, '상점 도착 실패')
                 self.setState(GWState.RETURN_TO_VILL)
@@ -231,7 +233,7 @@ class GameWndState:
     def checkGoHunt(self):        
         # 사냥 가는 길 체크가 어려움. 시간으로 체크한다
         # 고급 이미지 프로세싱 필요
-        if (time.time() - self.tAction) >= 100:
+        if (time.time() - self.tAction) >= 180:
             print(self, '자동 사냥 시작')
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
@@ -241,23 +243,39 @@ class GameWndState:
             # 사냥 이동 중에 월드 맵 상태가 가끔 되는데 이유는 모르겠고 일단 풀어주자
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
+        else:
+            # 이진화 후 이동 시 깜빡 거리는 글씨를 체크 한다
+            check_moving = cv2.imread('./image/moving.png', cv2.IMREAD_GRAYSCALE)
+            gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+            ret, dst = cv2.threshold(gray, 74, 255, cv2.THRESH_BINARY)
+            _, mv, _, _ = cv2.minMaxLoc(cv2.matchTemplate(dst, check_moving, cv2.TM_CCOEFF_NORMED))
+            if mv >= 0.30:
+                print(self.name, '이동 중', mv, self.goHuntCntEnd)
+                self.goHuntCntEnd = 0
+            else:
+                print(self.name, '이동 안하는 중', mv, self.goHuntCntEnd)
+                self.goHuntCntEnd = self.goHuntCntEnd + 1
+        
+        if self.goHuntCntEnd >= 4:
+            print(self, '자동 사냥 시작')
+            self.tAutoHuntStart = time.time()
+            self.key_press(0xBD)
+            #self.click(736,257)
+            self.setState(GWState.NORMAL)
             
             
-    def updateAutoAttack(self, isPowerSaveMode, isAutoAttacking):
+    def updateAutoAttack(self, isPowerSaveMode, isAutoAttacking, returnKeyShortcut):
         if isAutoAttacking is False and (time.time() - self.tAction) > 180:
             # 캐릭터가 잠수를 3분 이상 타고 있으면 귀환해서 사냥터로 복귀하는 프로세스 동작시킴
             if isPowerSaveMode is False:
                 self.goPowerSaveMode()                                
-            self.returnToVillage()
+            self.returnToVillage(returnKeyShortcut)
             return True
-            
-        elif isAutoAttacking and (time.time() - self.tAutoHuntStart) > 1200:
-            # 자동 사냥 상태일 때, 캐릭터 20분마다 모아주기
-            self.tAutoHuntStart = time.time()
-            if isPowerSaveMode:
-                self.key_press(win32con.VK_ESCAPE)
-                time.sleep(0.3)
-            self.goPyosik()
+        elif isAutoAttacking and (time.time() - self.tAction) > 60 * 60 * 3:
+            # 캐릭터가 자동사냥 시작한지 5시간이 지나면 귀환 후 다시 
+            if isPowerSaveMode is False:
+                self.goPowerSaveMode()                                
+            self.returnToVillage(returnKeyShortcut)
             return True
 
         return False
