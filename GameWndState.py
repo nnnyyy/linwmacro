@@ -9,6 +9,7 @@ import time
 import cv2
 from enum import Enum
 shell = win32com.client.Dispatch("WScript.Shell")
+import logging
 
 PATH_CHECK_AUTO_MOVE_BTN = './image/checkautomovebtn.png'
 PATH_CHECK_WORLDMAP = './image/checkworldmap.png'
@@ -151,12 +152,12 @@ class GameWndState:
         for _ in range(0,5):
             isCheckNoVill = self.isMatching(self.img, self._imgCheckVill)            
             if isCheckNoVill: 
-                print(self, '마을이 아닙니다')
+                logging.debug(f'{self} - 마을이 아닙니다')
                 self.key_press(ord(key.upper()))
                 time.sleep(1.5)
                 self.screenshot()
             else:
-                print(self, '마을입니다')
+                logging.debug(f'{self} - 마을입니다')
                 self.click(709,315)
                 time.sleep(0.5)
                 self.click(496,227)
@@ -165,7 +166,7 @@ class GameWndState:
                 if self.isMatching(self.img, self._imgCheckShopBtnWithMove):
                     pos = self.getMatchPos(self.img, self._imgCheckShopBtnWithMove)
                     self.click(pos[0] + 5,pos[1] + 5)
-                    print(self, '잡화상점으로 이동합니다')
+                    logging.debug(f'{self} - 잡화상점으로 이동합니다')
                     self.setState(GWState.GO_BUY_POSION)
                 else:
                     # 일단 다른 캐릭에게 처리 양보
@@ -178,23 +179,20 @@ class GameWndState:
             
     def checkInShop(self):
         if self.isMatching(self.getImg(358,61,80,32), self._checkShop):  
-            print(self, '잡화상점입니다')
+            logging.debug(f'{self} - 잡화상점')
             self.click(643,411)
             time.sleep(0.5)
             self.click(734,411)
             time.sleep(0.3)
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
-            print(self, '맵 이동 시작')
             self.goPyosik()
             
-            self.setState(GWState.GO_HUNT)
-            print(self, '사냥하러')
+            self.setState(GWState.GO_HUNT)            
             return True
         else:
-            if (time.time() - self.tAction) >= 80:
-                # 60초 안에 상점에 도착하지 않으면 처음부터 다시 시도한다
-                print(self, '상점 도착 실패')
+            if (time.time() - self.tAction) >= 100:
+                logging.debug(f'{self} - 상점 이동 실패')
                 self.setState(GWState.RETURN_TO_VILL)
                 return False
             
@@ -222,7 +220,7 @@ class GameWndState:
                 _pos = self.getMatchPos(self.img, self._checkAutoMoveBtn)
                 self.click(_pos[0],_pos[1])
             else:
-                print(self, '맵 이동 실패')
+                logging.debug(f'{self} - 맵 이동 실패')
                 self.key_press(win32con.VK_ESCAPE)
                 time.sleep(0.3)
                 self.key_press(win32con.VK_ESCAPE)
@@ -233,14 +231,14 @@ class GameWndState:
     def checkGoHunt(self):        
         # 사냥 가는 길 체크가 어려움. 시간으로 체크한다
         # 고급 이미지 프로세싱 필요
-        if (time.time() - self.tAction) >= 180:
-            print(self, '자동 사냥 시작')
+        if (time.time() - self.tAction) >= 360:
+            logging.debug(f'{self} - 자동 사냥 시작')
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
         elif self.isMatching(self.img, self._checkmap):
-            # 사냥 이동 중에 월드 맵 상태가 가끔 되는데 이유는 모르겠고 일단 풀어주자
+            # 사냥 이동 중에 포커싱을 풀면 지도화면으로 자동 변환 된다. 풀어주자.
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
         else:
@@ -250,10 +248,8 @@ class GameWndState:
             ret, dst = cv2.threshold(gray, 74, 255, cv2.THRESH_BINARY)
             _, mv, _, _ = cv2.minMaxLoc(cv2.matchTemplate(dst, check_moving, cv2.TM_CCOEFF_NORMED))
             if mv >= 0.28:
-                print(self.name, '이동 중', mv, self.goHuntCntEnd)
                 self.goHuntCntEnd = 0
             else:
-                print(self.name, '이동 안하는 중', mv, self.goHuntCntEnd)
                 self.goHuntCntEnd = self.goHuntCntEnd + 1
         
         if self.goHuntCntEnd >= 5:
@@ -262,9 +258,3 @@ class GameWndState:
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
-            
-            
-# 상점 이동 탐색 범위            
-# 440, 92, 164, 286
-# checkShopBtnWithMove
-

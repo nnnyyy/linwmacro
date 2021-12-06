@@ -12,21 +12,23 @@ import numpy as np
 import win32com.client
 # Add this to __ini__
 shell = win32com.client.Dispatch("WScript.Shell")
-import os
 from tkinter import *
 
 from slack import WebClient
 from GameWndState import GameWndState, GWState
+import logging
 
 class ProcessController(object):
-    def __init__(self, app):        
+    from Tool import ToolDlg
+    def __init__(self, app:ToolDlg):        
         self.thread = None
         self.stop_threads = threading.Event()
         self.dNoneAutoAttackAlertTime = dict()
         self.dAttackedAlertTime = dict()        
         self.lineage_window_list = [] 
-        self.slackClient = None
-        self.app = app
+        self.slackClient = None        
+        self.app = app        
+        logging.debug(f'컨트롤러 생성')
     
     def refreshWnds(self):
         toplist = []
@@ -103,7 +105,6 @@ class ProcessController(object):
         game_width = 800
         game_height = 450
 
-        print(screen_width, screen_height)
         for (lw_hwnd, lw_title) in _list_selected:   
             if (x + game_width) > screen_width:
                 x = x_init
@@ -186,7 +187,8 @@ class ProcessController(object):
                     
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
                     if _gw.screenshot() == False:
-                        print('screenshot failed..', _gw)
+                        logging.error(f'{_gw} screenshot failed..')
+                        
                         continue                    
                 
                     isPowerSaveMode = _gw.isMatching(_gw.getImg(764,11,12,3), _imgCheckSavePower) != True
@@ -219,7 +221,7 @@ class ProcessController(object):
                         self.processOnNormalMode(_gw)
                     
                 except Exception as e:
-                    print('error', e, lw_title)
+                    logging.error(f'{lw_title} -  {e}')
                     # self.post_message(token, '#lineage_alert', 'error:' + e + ' ' + lw_title)
             
             time.sleep(loopTerm)
@@ -303,11 +305,11 @@ class ProcessController(object):
         self.app.lbState.set("매크로 종료 중")
 
         self.app.btnSortWnd3["state"] = "disabled"
-        print('thread stopping...')
+        logging.debug('thread stopping...')
         self.stop_threads.set()
         self.thread.join()
         self.thread = None
-        print('thread stopped')
+        logging.debug('thread stopped')
 
         # UI 상태 초기화
         self.app.btnSortWnd1["state"] = 'normal'     
@@ -322,7 +324,6 @@ class ProcessController(object):
     def post_message(self, text):
         response = requests.post("https://slack.com/api/chat.postMessage",
         headers={"Authorization": "Bearer "+self.app.tbSlackToken.get()},data={"channel": self.app.tbChannel.get(),"text": text})
-        print(response)
 
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)
