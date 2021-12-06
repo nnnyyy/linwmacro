@@ -174,11 +174,11 @@ class ProcessController(object):
         self.thread.start()
         self.app.btnSortWnd1["state"] = 'disabled'
         self.app.btnSortWnd3["state"] = "normal"
-        self.app.tbShortcut["state"] = 'disabled'
-        self.app.tbLoopTerm["state"] = 'disabled'
-        self.app.tbNonAttack["state"] = 'disabled'
-        self.app.tbSlackToken["state"] = 'disabled'
-        self.app.tbChannel["state"] = 'disabled'
+        self.app.tbShortcutUI["state"] = 'disabled'
+        self.app.tbLoopTermUI["state"] = 'disabled'
+        self.app.tbNonAttackUI["state"] = 'disabled'
+        self.app.tbSlackTokenUI["state"] = 'disabled'
+        self.app.tbChannelUI["state"] = 'disabled'
         self.app.checkReturnToVillBtn["state"] = 'disabled'    
 
     def click(self, x, y):
@@ -202,12 +202,12 @@ class ProcessController(object):
         # UI 상태 초기화
         self.app.btnSortWnd1["state"] = 'normal'     
         self.app.checkReturnToVillBtn["state"] = 'normal'   
-        self.app.tbShortcut["state"] = 'normal'
-        self.app.tbLoopTerm["state"] = 'normal'
-        self.app.tbNonAttack["state"] = 'normal'
-        self.app.tbSlackToken["state"] = 'normal'
-        self.app.tbChannel["state"] = 'normal'
-        self.app.self.lbState.set("대기 중")    
+        self.app.tbShortcutUI["state"] = 'normal'
+        self.app.tbLoopTermUI["state"] = 'normal'
+        self.app.tbNonAttackUI["state"] = 'normal'
+        self.app.tbSlackTokenUI["state"] = 'normal'
+        self.app.tbChannelUI["state"] = 'normal'
+        self.app.lbState.set("대기 중")    
 
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)

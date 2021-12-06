@@ -219,10 +219,10 @@ class GameWndState:
         _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
         isCheckNoVill = self.isMatching(self.img, _imgCheckVill)
         if isCheckNoVill:
-            self.key_press(self.img, ord(self.app.tbShortcut.get().upper()))     
+            self.key_press(ord(self.app.tbShortcut.get().upper()))     
     
     def goPowerSaveMode(self):
-        self.key_press(self.hwnd, ord('G'))
+        self.key_press(ord('G'))
         time.sleep(0.8)
         
         shell.SendKeys('%')
