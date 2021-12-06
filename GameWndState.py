@@ -192,7 +192,7 @@ class GameWndState:
             print(self, '사냥하러')
             return True
         else:
-            if (time.time() - self.tAction) >= 30:
+            if (time.time() - self.tAction) >= 80:
                 # 60초 안에 상점에 도착하지 않으면 처음부터 다시 시도한다
                 print(self, '상점 도착 실패')
                 self.setState(GWState.RETURN_TO_VILL)
@@ -249,36 +249,19 @@ class GameWndState:
             gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
             ret, dst = cv2.threshold(gray, 74, 255, cv2.THRESH_BINARY)
             _, mv, _, _ = cv2.minMaxLoc(cv2.matchTemplate(dst, check_moving, cv2.TM_CCOEFF_NORMED))
-            if mv >= 0.30:
+            if mv >= 0.28:
                 print(self.name, '이동 중', mv, self.goHuntCntEnd)
                 self.goHuntCntEnd = 0
             else:
                 print(self.name, '이동 안하는 중', mv, self.goHuntCntEnd)
                 self.goHuntCntEnd = self.goHuntCntEnd + 1
         
-        if self.goHuntCntEnd >= 4:
+        if self.goHuntCntEnd >= 5:
             print(self, '자동 사냥 시작')
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
-            
-            
-    def updateAutoAttack(self, isPowerSaveMode, isAutoAttacking, returnKeyShortcut):
-        if isAutoAttacking is False and (time.time() - self.tAction) > 180:
-            # 캐릭터가 잠수를 3분 이상 타고 있으면 귀환해서 사냥터로 복귀하는 프로세스 동작시킴
-            if isPowerSaveMode is False:
-                self.goPowerSaveMode()                                
-            self.returnToVillage(returnKeyShortcut)
-            return True
-        elif isAutoAttacking and (time.time() - self.tAction) > 60 * 60 * 3:
-            # 캐릭터가 자동사냥 시작한지 5시간이 지나면 귀환 후 다시 
-            if isPowerSaveMode is False:
-                self.goPowerSaveMode()                                
-            self.returnToVillage(returnKeyShortcut)
-            return True
-
-        return False
             
             
 # 상점 이동 탐색 범위            
