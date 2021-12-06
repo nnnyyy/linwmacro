@@ -25,12 +25,16 @@ class GWState(Enum):
 게임 윈도우 상태 관리 클래스    
 """
 class GameWndState:
-    def __init__(self, hwnd, name):
+    from Tool import ToolDlg
+    def __init__(self, hwnd, name, app:ToolDlg):
         self.hwnd = hwnd
         self.name = name
         self.setState(GWState.NORMAL)
         self.loadImgs()
         self.tAutoHuntStart = time.time()
+        self.tNoneAutoAttackAlertTime = 0
+        self.tAttackedAlertMsg = 0
+        self.app = app
                 
     def __str__(self):
         return f'{self.name} : {self.hwnd}'
@@ -40,7 +44,9 @@ class GameWndState:
         self._checkShop = cv2.imread(PATH_CHECK_SHOP, cv2.IMREAD_COLOR)
         self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
         self._imgCheckShopBtnWithMove = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)   
-        self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR)       
+        self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR) 
+        self._imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
+        self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)        
         
     
     def click(self, x, y):
@@ -118,6 +124,102 @@ class GameWndState:
         dx = x + w
         dy = y + h
         return self.img[y:dy,x:dx]
+    
+    def update(self):
+        isPowerSaveMode = self.isMatching(self.getImg(764,11,12,3), self._imgCheckSavePower) != True
+        isPowerSaveMenu = self.isMatching(self.img, self._imgPowerSaveMenu)
+        if isPowerSaveMenu == True:
+            self.key_press(win32con.VK_ESCAPE)
+            return
+            
+        # 절전모드가 아닌 상태에서
+        # 귀환 상태인지 체크 -> 마을인지 체크 -> 상점 물약 구매 -> 상점인지 체크 -> 자동 구매 -> 이동 -> 자동사냥 -> 모드 종료
+        if self.state == GWState.RETURN_TO_VILL:
+            self.goBuyPosion(self.app.tbShortcut.get())
+            return
+        elif self.state == GWState.GO_BUY_POSION:
+            if self.checkInShop() == False:
+                self.sendAlertMsgDelay('상점 이동에 실패 했습니다')                            
+                pass
+            return
+        elif self.state == GWState.GO_HUNT:
+            self.checkGoHunt()
+            return
+
+        # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
+        if isPowerSaveMode != True:
+            self.goPowerSaveMode()
+            return       
+
+        if isPowerSaveMode:
+            self.processOnPowerSaveMode()
+        else:
+            self.processOnNormalMode()    
+            
+    def processOnPowerSaveMode(self):
+        _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
+        _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
+        _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)
+        _imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)        
+        _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
+        
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], _imgCheckAutoAttack)
+        
+        isAttacked = self.isMatching(self.img[290:329,324:477], _imgCheckAttacked)
+        
+        isDigit1 = self.isMatching(self.img[413:417,364:369], _imgCheck1Digit)
+
+        if isAttacked:
+            if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
+                self.click(744, 396)                
+                self.uploadFile('./screenshot.png')
+
+        if isAutoAttacking:                        
+            # print('HP OK')
+            isHPOK = self.isMatching(self.img[24:31,68:110], _imgCheckHP) == False
+
+            # print('Weight')
+            isNoAttackByWeight = False
+            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], _imgCheckNoAttackByWeight)                        
+            
+            if isDigit1:
+                # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
+                self.returnToVillage(self.app.tbShortcut.get())                
+                # self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
+
+            elif isHPOK == False:   
+                self.returnToVillage(self.app.tbShortcut.get())
+                # self.post_message(_gw.name + ' : HP가 부족합니다.')
+            elif isNoAttackByWeight:
+                self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')
+        else:
+            self.sendAlertMsgDelay('대기 중입니다.')
+            
+    def sendAlertMsgDelay(self, msg):
+        tNonAttackTerm = int(self.app.tbNonAttack.get())
+        _t = time.time() - self.tNoneAutoAttackAlertTime
+        if _t >= tNonAttackTerm:            
+            self.app.post_message(f'{self.name} : {msg}')
+            self.tNoneAutoAttackAlertTime = time.time()
+            return True
+        else:
+            return False
+        
+    def sendAttackedAlertMsgDelay(self, msg):
+        tNonAttackTerm = 7
+        _t = time.time() - self.tAttackedAlertMsg
+        if _t >= tNonAttackTerm:            
+            self.app.post_message(f'{self.name} : {msg}')
+            self.tAttackedAlertMsg = time.time()
+            return True
+        else:
+            return False
+
+    def processOnNormalMode(self):
+        _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
+        isCheckNoVill = self.isMatching(self.img, _imgCheckVill)
+        if isCheckNoVill:
+            self.key_press(self.img, ord(self.app.tbShortcut.get().upper()))     
     
     def goPowerSaveMode(self):
         self.key_press(self.hwnd, ord('G'))

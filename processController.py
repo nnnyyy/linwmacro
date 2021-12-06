@@ -1,5 +1,4 @@
 import threading
-import requests
 import pyautogui
 import win32gui
 import win32con
@@ -39,7 +38,7 @@ class ProcessController(object):
         win32gui.EnumWindows(enum_callback, toplist)
         _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
         for (_h, _t) in _wnds:
-            gw = GameWndState(_h, _t)
+            gw = GameWndState(_h, _t, self.app)
             self.lineage_window_list.append(gw)            
         
         self.lineage_window_list.sort(key=lambda _gw: _gw.name, reverse=True)
@@ -117,35 +116,7 @@ class ProcessController(object):
                 y = 90
                 
             self.setForegroundWnd(lw_hwnd)    
-            time.sleep(0.1)      
-
-    def sendAlertMsgDelay(self, wnd, msg):
-        tNonAttackTerm = int(self.app.tbNonAttack.get())
-        if wnd not in self.dNoneAutoAttackAlertTime: 
-            self.post_message(wnd + ' : ' + msg)
-            self.dNoneAutoAttackAlertTime[wnd] = time.time()
-            return True
-        else:
-            _t = time.time() - self.dNoneAutoAttackAlertTime[wnd]
-            if _t >= tNonAttackTerm: 
-                self.post_message(wnd + ' : ' + msg)
-                self.dNoneAutoAttackAlertTime[wnd] = time.time()
-                return True
-            return False
-        
-    def sendAttackedAlertMsgDelay(self, wnd, msg):
-        tNonAttackTerm = 7
-        if wnd not in self.dAttackedAlertTime: 
-            self.post_message(wnd + ' : ' + msg)
-            self.dAttackedAlertTime[wnd] = time.time()
-            return True
-        else:
-            _t = time.time() - self.dAttackedAlertTime[wnd]
-            if _t >= tNonAttackTerm: 
-                self.post_message(wnd + ' : ' + msg)
-                self.dAttackedAlertTime[wnd] = time.time()
-                return True
-            return False
+            time.sleep(0.1)          
 
     def setForegroundWndByDoubleClick(self, event):
         for i in self.app.listProcess.curselection():
@@ -169,10 +140,8 @@ class ProcessController(object):
         self.app.lbState.set("매크로 실행 중")   
         
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
-        loopTerm = int(self.app.tbLoopTerm.get())
+        loopTerm = int(self.app.tbLoopTerm.get())       
         
-        _imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
-        _imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)  
 
         while not self.stop_threads.is_set():   
             _gw: GameWndState   
@@ -189,87 +158,15 @@ class ProcessController(object):
                     if _gw.screenshot() == False:
                         logging.error(f'{_gw} screenshot failed..')
                         
-                        continue                    
-                
-                    isPowerSaveMode = _gw.isMatching(_gw.getImg(764,11,12,3), _imgCheckSavePower) != True
-                    isPowerSaveMenu = _gw.isMatching(_gw.img, _imgPowerSaveMenu)
-                    if isPowerSaveMenu == True:
-                        self.key_press(lw_hwnd, win32con.VK_ESCAPE)
-                        continue
-                        
-                    # 절전모드가 아닌 상태에서
-                    # 귀환 상태인지 체크 -> 마을인지 체크 -> 상점 물약 구매 -> 상점인지 체크 -> 자동 구매 -> 이동 -> 자동사냥 -> 모드 종료
-                    if _gw.state == GWState.RETURN_TO_VILL:
-                        _gw.goBuyPosion(self.app.tbShortcut.get())
-                        continue
-                    elif _gw.state == GWState.GO_BUY_POSION:
-                        if _gw.checkInShop() == False:
-                            self.sendAlertMsgDelay(_gw.name, '상점 이동에 실패 했습니다')                            
-                        continue
-                    elif _gw.state == GWState.GO_HUNT:
-                        _gw.checkGoHunt()
-                        continue
-
-                    # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
-                    if isPowerSaveMode != True:
-                        self.goSavePower(_gw) 
-                        continue                    
-
-                    if isPowerSaveMode:
-                        self.processOnPowerSaveMode(_gw)
-                    else:
-                        self.processOnNormalMode(_gw)
+                        continue 
+                    
+                    _gw.update()
                     
                 except Exception as e:
                     logging.error(f'{lw_title} -  {e}')
                     # self.post_message(token, '#lineage_alert', 'error:' + e + ' ' + lw_title)
             
-            time.sleep(loopTerm)
-
-    def processOnPowerSaveMode(self, _gw:GameWndState):
-        _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
-        _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
-        _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)
-        _imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)        
-        _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
-        
-        isAutoAttacking = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAutoAttack)
-        
-        isAttacked = _gw.isMatching(_gw.img[290:329,324:477], _imgCheckAttacked)
-        
-        isDigit1 = _gw.isMatching(_gw.img[413:417,364:369], _imgCheck1Digit)
-
-        if isAttacked:
-            if self.sendAttackedAlertMsgDelay(_gw.name, '공격 받고 있습니다!'):
-                _gw.click(744, 396)                
-                self.uploadFile('./screenshot.png')
-
-        if isAutoAttacking:                        
-            # print('HP OK')
-            isHPOK = _gw.isMatching(_gw.img[24:31,68:110], _imgCheckHP) == False
-
-            # print('Weight')
-            isNoAttackByWeight = False
-            isNoAttackByWeight = _gw.isMatching(_gw.img[420:430,410:445], _imgCheckNoAttackByWeight)                        
-            
-            if isDigit1:
-                # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
-                _gw.returnToVillage(self.app.tbShortcut.get())                
-                # self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
-
-            elif isHPOK == False:   
-                _gw.returnToVillage(self.app.tbShortcut.get())
-                # self.post_message(_gw.name + ' : HP가 부족합니다.')
-            elif isNoAttackByWeight:
-                self.sendAlertMsgDelay(_gw.name, '가방이 가득차서 공격할 수 없습니다.')
-        else:
-            self.sendAlertMsgDelay(_gw.name, '대기 중입니다.')
-
-    def processOnNormalMode(self, _gw:GameWndState):
-        _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
-        isCheckNoVill = self.isMatching(_gw.img, _imgCheckVill)
-        if isCheckNoVill:
-            self.key_press(_gw.img, ord(self.app.tbShortcut.get().upper()))    
+            time.sleep(loopTerm)       
 
     def start(self, type=1):
         self.stop_threads.clear()
@@ -282,16 +179,7 @@ class ProcessController(object):
         self.app.tbNonAttack["state"] = 'disabled'
         self.app.tbSlackToken["state"] = 'disabled'
         self.app.tbChannel["state"] = 'disabled'
-        self.app.checkReturnToVillBtn["state"] = 'disabled'
-
-    def goSavePower(self, gw):
-        self.key_press(gw.hwnd, ord('G'))
-        time.sleep(0.8)
-        
-        shell.SendKeys('%')
-        win32gui.SetForegroundWindow(gw.hwnd)
-        gw.click(400, 220)
-        time.sleep(0.8)
+        self.app.checkReturnToVillBtn["state"] = 'disabled'    
 
     def click(self, x, y):
         (prevX,prevY) = pyautogui.position()
@@ -319,11 +207,7 @@ class ProcessController(object):
         self.app.tbNonAttack["state"] = 'normal'
         self.app.tbSlackToken["state"] = 'normal'
         self.app.tbChannel["state"] = 'normal'
-        self.app.self.lbState.set("대기 중")
-
-    def post_message(self, text):
-        response = requests.post("https://slack.com/api/chat.postMessage",
-        headers={"Authorization": "Bearer "+self.app.tbSlackToken.get()},data={"channel": self.app.tbChannel.get(),"text": text})
+        self.app.self.lbState.set("대기 중")    
 
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)

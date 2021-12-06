@@ -1,3 +1,4 @@
+import requests
 import tkinter
 from tkinter import *
 
@@ -99,4 +100,7 @@ class ToolDlg( tkinter.Tk ):
     def on_closing(self):
         self.controller.stop()
         self.destroy()
-        
+    
+    def post_message(self, text):
+        response = requests.post("https://slack.com/api/chat.postMessage",
+        headers={"Authorization": "Bearer "+self.tbSlackToken.get()},data={"channel": self.tbChannel.get(),"text": text})
