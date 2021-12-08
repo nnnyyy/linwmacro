@@ -21,7 +21,7 @@ dictConfig({
         'file_error': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': 'error.log',
             'formatter': 'default',
         },
     },

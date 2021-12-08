@@ -22,11 +22,10 @@ class ProcessController(object):
     def __init__(self, app:ToolDlg):        
         self.thread = None
         self.stop_threads = threading.Event()
-        self.dNoneAutoAttackAlertTime = dict()
-        self.dAttackedAlertTime = dict()        
         self.lineage_window_list = [] 
         self.slackClient = None        
         self.app = app        
+        self.tCheckActivate = time.time()
         logging.debug(f'컨트롤러 생성')
     
     def refreshWnds(self):
@@ -144,6 +143,7 @@ class ProcessController(object):
         
 
         while not self.stop_threads.is_set():   
+            self.checkDeactivatedList()
             _gw: GameWndState   
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
@@ -167,6 +167,13 @@ class ProcessController(object):
                     # self.post_message(token, '#lineage_alert', 'error:' + e + ' ' + lw_title)
             
             time.sleep(loopTerm)       
+            
+    def checkDeactivatedList(self):
+        if time.time() - self.tCheckActivate >= 60 * 5:
+            self.tCheckActivate = time.time()
+            if self.app.listProcess.size() > 0:                
+                self.app.post_message(f'활성화 되지 않은 프로세스가 있습니다')
+        pass
 
     def start(self, type=1):
         self.stop_threads.clear()
