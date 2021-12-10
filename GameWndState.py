@@ -46,7 +46,8 @@ class GameWndState:
         self._imgCheckShopBtnWithMove = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)   
         self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR) 
         self._imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
-        self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)        
+        self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
+        self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)     
         
     
     def click(self, x, y):
@@ -149,21 +150,19 @@ class GameWndState:
         # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
         if isPowerSaveMode != True:
             self.goPowerSaveMode()
+            self.app.tConcourse = time.time()
             return       
 
         if isPowerSaveMode:
-            self.processOnPowerSaveMode()
-        else:
-            self.processOnNormalMode()    
+            self.processOnPowerSaveMode() 
             
     def processOnPowerSaveMode(self):
         _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
         _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
-        _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)
-        _imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)        
+        _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
         _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
         
-        isAutoAttacking = self.isMatching(self.img[290:329,324:477], _imgCheckAutoAttack)
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self._imgCheckAutoAttack)
         
         isAttacked = self.isMatching(self.img[290:329,324:477], _imgCheckAttacked)
         
@@ -191,9 +190,9 @@ class GameWndState:
                 self.returnToVillage(self.app.tbShortcut.get())
                 # self.post_message(_gw.name + ' : HP가 부족합니다.')
             elif isNoAttackByWeight:
-                self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')
+                self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')            
         else:
-            self.sendAlertMsgDelay('대기 중입니다.')
+            self.returnToVillage(self.app.tbShortcut.get())
             
     def sendAlertMsgDelay(self, msg):
         tNonAttackTerm = int(self.app.tbNonAttack.get())
@@ -354,9 +353,18 @@ class GameWndState:
             else:
                 self.goHuntCntEnd = self.goHuntCntEnd + 1
         
-        if self.goHuntCntEnd >= 5:
-            print(self, '자동 사냥 시작')
+        if self.goHuntCntEnd >= 7:
+            logging.debug(f'{self} - 자동 사냥 시작')
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
+            
+    def concourse(self):
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self._imgCheckAutoAttack)
+        if isAutoAttacking:
+            self.key_press(win32con.VK_ESCAPE)
+            time.sleep(0.8)
+            self.goPyosik()
+            self.setState(GWState.GO_HUNT)
+            logging.debug(f'{self} - 모으기')

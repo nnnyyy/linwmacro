@@ -1,5 +1,6 @@
 import requests
 import tkinter
+import time
 from tkinter import *
 
 
@@ -22,6 +23,8 @@ class ToolDlg( tkinter.Tk ):
         self.lbState.set("대기 중")
         self.checkReturnToVill = tkinter.IntVar()
         self.checkReturnToVill.set(1)        
+        self.checkConcourse = tkinter.IntVar()
+        self.checkConcourse.set(1)        
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
         self.tbLoopTerm = tkinter.StringVar()
@@ -32,6 +35,7 @@ class ToolDlg( tkinter.Tk ):
         self.tbSlackToken.set("xoxb-1436627767411-2747230415026-VHEhgdqFabJk3CvOSU5Yf3M3")
         self.tbChannel = tkinter.StringVar()
         self.tbChannel.set("#lineage_alert")
+        self.tConcourse = time.time()
         
         Label(self, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=10)
         self.listProcess = tkinter.Listbox(self, selectmode='extended')
@@ -51,7 +55,7 @@ class ToolDlg( tkinter.Tk ):
         self.btnSortWnd1.place(x=8,y=262)
 
         self.checkReturnToVillBtn = Checkbutton(self,text="비상 시 단축키 사용",variable=self.checkReturnToVill)
-        self.checkReturnToVillBtn   .place(x=0,y=42)
+        self.checkReturnToVillBtn   .place(x=0,y=42)        
         self.tbShortcutUI = Entry(self, width=4, textvariable=self.tbShortcut)
         self.tbShortcutUI.place(x=160,y=44)
 
@@ -87,6 +91,9 @@ class ToolDlg( tkinter.Tk ):
         self.btnSortWnd3 = Button(self, text="매크로 종료", command=self.controller.stop)
         self.btnSortWnd3.place(x=516,y=262)
         self.btnSortWnd3["state"] = "disabled"
+        
+        self.checkConcourseBtn = Checkbutton(self,text="전투 중 모으기",variable=self.checkConcourse)
+        self.checkConcourseBtn   .place(x=0,y=292)
 
         self.btnMoveActivate = Button(self, text=">>", command=self.controller.moveActivate)
         self.btnMoveActivate.place(x=580,y=80)

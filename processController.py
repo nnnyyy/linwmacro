@@ -136,7 +136,8 @@ class ProcessController(object):
         self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
 
     def onProcInThread(self, type=1):             
-        self.app.lbState.set("매크로 실행 중")   
+        self.app.lbState.set("매크로 실행 중") 
+        self.app.tConcourse = time.time()  
         
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
         loopTerm = int(self.app.tbLoopTerm.get())       
@@ -145,19 +146,29 @@ class ProcessController(object):
         while not self.stop_threads.is_set():   
             self.checkDeactivatedList()
             _gw: GameWndState   
+            
+            # 사냥 시 일정 시간 간격으로 모으기
+            if self.app.checkConcourse and (time.time() - self.app.tConcourse) >= 1200:
+                for _gw in self.lineage_window_list:
+                    activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
+                    if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
+                        continue;
+                    _gw.concourse()
+                self.app.tConcourse = time.time()
+                continue
+            
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
                 try:         
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
-                        continue;                    
+                        continue;
                     
                     
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
                     if _gw.screenshot() == False:
-                        logging.error(f'{_gw} screenshot failed..')
-                        
+                        logging.error(f'{_gw} screenshot failed..')                        
                         continue 
                     
                     _gw.update()
