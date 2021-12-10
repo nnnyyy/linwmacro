@@ -250,31 +250,27 @@ class GameWndState:
         return max_loc
         
     def goBuyPosion(self, key):
-        for _ in range(0,5):
-            isCheckNoVill = self.isMatching(self.img, self._imgCheckVill)            
-            if isCheckNoVill: 
-                logging.debug(f'{self} - 마을이 아닙니다')
-                self.key_press(ord(key.upper()))
-                time.sleep(1.5)
-                self.screenshot()
+        isCheckNoVill = self.isMatching(self.img, self._imgCheckVill)            
+        if isCheckNoVill is False: 
+            logging.debug(f'{self} - 마을이 아닙니다')
+            self.key_press(ord(key.upper()))
+            time.sleep(1.5)
+        else:
+            logging.debug(f'{self} - 마을입니다')
+            self.click(709,315)
+            time.sleep(0.5)
+            self.click(496,227)
+            time.sleep(1.5)                
+            self.screenshot()
+            if self.isMatching(self.img, self._imgCheckShopBtnWithMove):
+                pos = self.getMatchPos(self.img, self._imgCheckShopBtnWithMove)
+                self.click(pos[0] + 5,pos[1] + 5)
+                logging.debug(f'{self} - 잡화상점으로 이동합니다')
+                self.setState(GWState.GO_BUY_POSION)
             else:
-                logging.debug(f'{self} - 마을입니다')
-                self.click(709,315)
-                time.sleep(0.5)
-                self.click(496,227)
-                time.sleep(1.5)                
-                self.screenshot()
-                if self.isMatching(self.img, self._imgCheckShopBtnWithMove):
-                    pos = self.getMatchPos(self.img, self._imgCheckShopBtnWithMove)
-                    self.click(pos[0] + 5,pos[1] + 5)
-                    logging.debug(f'{self} - 잡화상점으로 이동합니다')
-                    self.setState(GWState.GO_BUY_POSION)
-                else:
-                    # 일단 다른 캐릭에게 처리 양보
-                    self.click(224,302)
-                    time.sleep(0.3)
-                
-                break
+                # 일단 다른 캐릭에게 처리 양보
+                self.click(224,302)
+                time.sleep(0.3)
             
         time.sleep(0.3)
             
@@ -303,15 +299,14 @@ class GameWndState:
     
     def goPyosik(self):        
         self.key_press(ord('M'))
-        time.sleep(1)
+        time.sleep(1.5)
         self.click(31,331)
-        time.sleep(0.6)
+        time.sleep(1)
         self.click(31,372)
         time.sleep(1)
         self.screenshot()
         if self.isMatching(self.img, self._checkAutoMoveBtn):
-            _pos = self.getMatchPos(self.img, self._checkAutoMoveBtn)
-            print(_pos)
+            _pos = self.getMatchPos(self.img, self._checkAutoMoveBtn)            
             self.click(_pos[0],_pos[1] + 5)
         else:
             self.click(31,372)

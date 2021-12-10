@@ -148,7 +148,7 @@ class ProcessController(object):
             _gw: GameWndState   
             
             # 사냥 시 일정 시간 간격으로 모으기
-            if self.app.checkConcourse and (time.time() - self.app.tConcourse) >= 1200:
+            if self.app.checkConcourse.get() == 1 and (time.time() - self.app.tConcourse) >= 1200:
                 for _gw in self.lineage_window_list:
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
