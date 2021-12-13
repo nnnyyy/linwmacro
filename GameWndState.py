@@ -10,6 +10,9 @@ import cv2
 from enum import Enum
 shell = win32com.client.Dispatch("WScript.Shell")
 import logging
+from slack import WebClient
+import numpy as np
+import psutil
 
 PATH_CHECK_AUTO_MOVE_BTN = './image/checkautomovebtn.png'
 PATH_CHECK_WORLDMAP = './image/checkworldmap.png'
@@ -35,6 +38,7 @@ class GameWndState:
         self.tNoneAutoAttackAlertTime = 0
         self.tAttackedAlertMsg = 0
         self.app = app
+        self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
                 
     def __str__(self):
         return f'{self.name} : {self.hwnd}'
@@ -47,7 +51,8 @@ class GameWndState:
         self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR) 
         self._imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
         self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
-        self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)     
+        self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)  
+        self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
         
     
     def click(self, x, y):
@@ -115,9 +120,7 @@ class GameWndState:
 
         if result == 1:
             #PrintWindow Succeeded
-            im.save("screenshot.png")
-            self.img = cv2.imread('screenshot.png', cv2.IMREAD_COLOR) 
-            self.img = cv2.resize(self.img, dsize=(800,450))
+            self.img = cv2.cvtColor(np.array(im),  cv2.COLOR_RGB2BGR)
             return True
         else: return False
         
@@ -126,7 +129,7 @@ class GameWndState:
         dy = y + h
         return self.img[y:dy,x:dx]
     
-    def update(self):
+    def update(self):        
         isPowerSaveMode = self.isMatching(self.getImg(764,11,12,3), self._imgCheckSavePower) != True
         isPowerSaveMenu = self.isMatching(self.img, self._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
@@ -192,7 +195,17 @@ class GameWndState:
             elif isNoAttackByWeight:
                 self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')            
         else:
-            self.returnToVillage(self.app.tbShortcut.get())
+            # 공격 중이 아닌 상태
+            # 1. 일단 절전 모드를 끈다
+            self.key_press(win32con.VK_ESCAPE)
+            time.sleep(1)
+            # 2. 마을인지 확인
+            if self.isOnVill():
+                # 2-1. 마을 이라면 잡화 상점 프로세스부터 진행
+                self.setState(GWState.RETURN_TO_VILL)                
+            else:
+                # 2-2. 아니라면 자동전투 진행
+                self.concourse()
             
     def sendAlertMsgDelay(self, msg):
         tNonAttackTerm = int(self.app.tbNonAttack.get())
@@ -213,10 +226,18 @@ class GameWndState:
             return True
         else:
             return False
+        
+    def uploadFile(self, filePath):
+        if self.slackClient is None: return
+        
+        self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
+        
+    def isOnVill(self):
+        return self.isMatching(self.img, self._imgCheckVill)
 
     def processOnNormalMode(self):
-        _imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
-        isCheckNoVill = self.isMatching(self.img, _imgCheckVill)
+        
+        isCheckNoVill = self.isOnVill()
         if isCheckNoVill:
             self.key_press(ord(self.app.tbShortcut.get().upper()))     
     
@@ -360,6 +381,7 @@ class GameWndState:
         if isAutoAttacking:
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.8)
-            self.goPyosik()
-            self.setState(GWState.GO_HUNT)
-            logging.debug(f'{self} - 모으기')
+        
+        self.goPyosik()
+        self.setState(GWState.GO_HUNT)
+        logging.debug(f'{self} - 모으기')

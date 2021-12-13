@@ -4,9 +4,7 @@ import win32gui
 import win32con
 import win32api
 from ctypes import windll
-import psutil
 import time
-import cv2
 import numpy as np
 import win32com.client
 # Add this to __ini__
@@ -16,6 +14,8 @@ from tkinter import *
 from slack import WebClient
 from GameWndState import GameWndState, GWState
 import logging
+import ctypes
+import psutil
 
 class ProcessController(object):
     from Tool import ToolDlg
@@ -129,21 +129,23 @@ class ProcessController(object):
     def setForegroundWnd(self, hwnd):
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(hwnd)
-        
-    def uploadFile(self, filePath):
-        if self.slackClient is None: return
-        
-        self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
 
     def onProcInThread(self, type=1):             
         self.app.lbState.set("매크로 실행 중") 
         self.app.tConcourse = time.time()  
         
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
-        loopTerm = int(self.app.tbLoopTerm.get())       
+        loopTerm = float(self.app.tbLoopTerm.get())       
         
-
+        import psutil
+        import os
+        
         while not self.stop_threads.is_set():   
+            # memory_usage_dict = dict(psutil.virtual_memory()._asdict())
+            # memory_usage_percent = memory_usage_dict['percent']
+            # print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
+            _tStart = time.time()
+            
             self.checkDeactivatedList()
             _gw: GameWndState   
             
@@ -161,6 +163,11 @@ class ProcessController(object):
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
                 try:         
+                    # pid = ctypes.windll.kernel32.GetProcessId(lw_hwnd)
+                    # current_process = psutil.Process(pid)
+                    # current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20
+                    # print(f"BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
                         continue;
@@ -171,13 +178,19 @@ class ProcessController(object):
                         logging.error(f'{_gw} screenshot failed..')                        
                         continue 
                     
+                    # current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20
+                    # print(f"AFTER CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    
                     _gw.update()
                     
                 except Exception as e:
+                    print(f'{lw_title} -  {e}')
                     logging.error(f'{lw_title} -  {e}')
                     # self.post_message(token, '#lineage_alert', 'error:' + e + ' ' + lw_title)
             
-            time.sleep(loopTerm)       
+            _gap = loopTerm - (time.time() - _tStart)
+            if _gap <= 0: _gap = 0
+            time.sleep(_gap)       
             
     def checkDeactivatedList(self):
         if time.time() - self.tCheckActivate >= 60 * 5:
