@@ -2,7 +2,11 @@ import requests
 import tkinter
 import time
 from tkinter import *
+import cv2
 
+PATH_CHECK_AUTO_MOVE_BTN = './image/checkautomovebtn.png'
+PATH_CHECK_WORLDMAP = './image/checkworldmap.png'
+PATH_CHECK_SHOP = './image/checkshop.png'
 
 class ToolDlg( tkinter.Tk ):
     def __init__(self, parent):
@@ -13,9 +17,23 @@ class ToolDlg( tkinter.Tk ):
         self.controller = ProcessController(self)
         self.initialize()
         
+        self._checkAutoMoveBtn = cv2.imread(PATH_CHECK_AUTO_MOVE_BTN, cv2.IMREAD_COLOR)
+        self._checkShop = cv2.imread(PATH_CHECK_SHOP, cv2.IMREAD_COLOR)
+        self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
+        self._imgCheckShopBtnWithMove = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)   
+        self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR) 
+        self._imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
+        self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
+        self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)  
+        self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
+        self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
+        self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
+        self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
+        self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR)
+        
         
     def initialize(self):
-        self.title("MogulMogul v1.0")
+        self.title("MogulMogul v1.1")
         self.geometry("800x500+100+100")
         self.resizable(False, False)
         

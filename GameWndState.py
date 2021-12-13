@@ -12,11 +12,6 @@ shell = win32com.client.Dispatch("WScript.Shell")
 import logging
 from slack import WebClient
 import numpy as np
-import psutil
-
-PATH_CHECK_AUTO_MOVE_BTN = './image/checkautomovebtn.png'
-PATH_CHECK_WORLDMAP = './image/checkworldmap.png'
-PATH_CHECK_SHOP = './image/checkshop.png'
 
 class GWState(Enum):
     NORMAL = 0,
@@ -44,7 +39,7 @@ class GameWndState:
         return f'{self.name} : {self.hwnd}'
     
     def loadImgs(self):
-        self._checkAutoMoveBtn = cv2.imread(PATH_CHECK_AUTO_MOVE_BTN, cv2.IMREAD_COLOR)
+        """self._checkAutoMoveBtn = cv2.imread(PATH_CHECK_AUTO_MOVE_BTN, cv2.IMREAD_COLOR)
         self._checkShop = cv2.imread(PATH_CHECK_SHOP, cv2.IMREAD_COLOR)
         self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
         self._imgCheckShopBtnWithMove = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)   
@@ -56,7 +51,7 @@ class GameWndState:
         self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
         self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
         self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
-        self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
+        self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) """
         
     
     def click(self, x, y):
@@ -134,8 +129,8 @@ class GameWndState:
         return self.img[y:dy,x:dx]
     
     def update(self):        
-        isPowerSaveMode = self.isMatching(self.getImg(764,11,12,3), self._imgCheckSavePower) != True
-        isPowerSaveMenu = self.isMatching(self.img, self._imgPowerSaveMenu)
+        isPowerSaveMode = self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
+        isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
             self.key_press(win32con.VK_ESCAPE)
             return
@@ -166,11 +161,11 @@ class GameWndState:
     def processOnPowerSaveMode(self):
         
         
-        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self._imgCheckAutoAttack)
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
         
-        isAttacked = self.isMatching(self.img[290:329,324:477], self._imgCheckAttacked)
+        isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)
         
-        isDigit1 = self.isMatching(self.img[413:417,364:369], self._imgCheck1Digit)
+        isDigit1 = self.isMatching(self.img[413:417,364:369], self.app._imgCheck1Digit)
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
@@ -179,11 +174,11 @@ class GameWndState:
 
         if isAutoAttacking:                        
             # print('HP OK')
-            isHPOK = self.isMatching(self.img[24:31,68:110], self._imgCheckHP) == False
+            isHPOK = self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
 
             # print('Weight')
             isNoAttackByWeight = False
-            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self._imgCheckNoAttackByWeight)                        
+            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self.app._imgCheckNoAttackByWeight)                        
             
             if isDigit1:
                 # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
@@ -234,7 +229,7 @@ class GameWndState:
         self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
         
     def isOnVill(self):
-        return self.isMatching(self.img, self._imgCheckVill)
+        return self.isMatching(self.img, self.app._imgCheckVill)
 
     def processOnNormalMode(self):
         
@@ -272,7 +267,7 @@ class GameWndState:
         return max_loc
         
     def goBuyPosion(self, key):
-        isCheckNoVill = self.isMatching(self.img, self._imgCheckVill)            
+        isCheckNoVill = self.isMatching(self.img, self.app._imgCheckVill)            
         if isCheckNoVill is False: 
             logging.debug(f'{self} - 마을이 아닙니다')
             self.key_press(ord(key.upper()))
@@ -284,8 +279,8 @@ class GameWndState:
             self.click(496,227)
             time.sleep(1.5)                
             self.screenshot()
-            if self.isMatching(self.img, self._imgCheckShopBtnWithMove):
-                pos = self.getMatchPos(self.img, self._imgCheckShopBtnWithMove)
+            if self.isMatching(self.img, self.app._imgCheckShopBtnWithMove):
+                pos = self.getMatchPos(self.img, self.app._imgCheckShopBtnWithMove)
                 self.click(pos[0] + 5,pos[1] + 5)
                 logging.debug(f'{self} - 잡화상점으로 이동합니다')
                 self.setState(GWState.GO_BUY_POSION)
@@ -297,7 +292,7 @@ class GameWndState:
         time.sleep(0.3)
             
     def checkInShop(self):
-        if self.isMatching(self.getImg(358,61,80,32), self._checkShop):  
+        if self.isMatching(self.getImg(358,61,80,32), self.app._checkShop):  
             logging.debug(f'{self} - 잡화상점')
             self.click(643,411)
             time.sleep(0.5)
@@ -327,15 +322,15 @@ class GameWndState:
         self.click(31,372)
         time.sleep(1)
         self.screenshot()
-        if self.isMatching(self.img, self._checkAutoMoveBtn):
-            _pos = self.getMatchPos(self.img, self._checkAutoMoveBtn)            
+        if self.isMatching(self.img, self.app._checkAutoMoveBtn):
+            _pos = self.getMatchPos(self.img, self.app._checkAutoMoveBtn)            
             self.click(_pos[0],_pos[1] + 5)
         else:
             self.click(31,372)
             time.sleep(1.5)
             self.screenshot()
-            if self.isMatching(self.img, self._checkAutoMoveBtn):
-                _pos = self.getMatchPos(self.img, self._checkAutoMoveBtn)
+            if self.isMatching(self.img, self.app._checkAutoMoveBtn):
+                _pos = self.getMatchPos(self.img, self.app._checkAutoMoveBtn)
                 self.click(_pos[0],_pos[1])
             else:
                 logging.debug(f'{self} - 맵 이동 실패')
@@ -355,7 +350,7 @@ class GameWndState:
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
-        elif self.isMatching(self.img, self._checkmap):
+        elif self.isMatching(self.img, self.app._checkmap):
             # 사냥 이동 중에 포커싱을 풀면 지도화면으로 자동 변환 된다. 풀어주자.
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
@@ -378,7 +373,7 @@ class GameWndState:
             self.setState(GWState.NORMAL)
             
     def concourse(self):
-        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self._imgCheckAutoAttack)
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
         if isAutoAttacking:
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.8)
