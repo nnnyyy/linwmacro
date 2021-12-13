@@ -2,7 +2,10 @@ import requests
 import tkinter
 import time
 from tkinter import *
+import tkinter.ttk
 import cv2
+import json
+import os
 
 PATH_CHECK_AUTO_MOVE_BTN = './image/checkautomovebtn.png'
 PATH_CHECK_WORLDMAP = './image/checkworldmap.png'
@@ -11,6 +14,17 @@ PATH_CHECK_SHOP = './image/checkshop.png'
 class ToolDlg( tkinter.Tk ):
     def __init__(self, parent):
         tkinter.Tk.__init__(self, parent)
+        
+        # json 옵션 파일 사용 예정
+        if not os.path.exists('./setting.json'):
+            with open('./setting.json','w+') as outfile:
+                _d = {}
+                _d['test'] = '123'
+                json.dump(_d, outfile, indent=4)
+        else:
+            with open('./setting.json', 'r') as jsonfile:
+                _d2 = json.load(jsonfile)
+                print(_d2)
         
         self.parent = parent
         from processController import ProcessController                
@@ -55,71 +69,89 @@ class ToolDlg( tkinter.Tk ):
         self.tbChannel.set("#lineage_alert")
         self.tConcourse = time.time()
         
-        Label(self, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=10)
-        self.listProcess = tkinter.Listbox(self, selectmode='extended')
+        # 공통 설정 페이지
+        notebook = tkinter.ttk.Notebook(self, width=780, height=450)
+        notebook.place(x=10,y=10)
+        
+        frame1 = tkinter.Frame(self)
+        notebook.add(frame1, text="공통")
+        
+        Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=10)
+        self.listProcess = tkinter.Listbox(frame1, selectmode='extended')
         self.listProcess.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
         self.listProcess.place(x=420,y=32)
 
-        Label(self, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=620,y=10)
-        self.listProcessActivated = tkinter.Listbox(self, selectmode='extended')
+        Label(frame1, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=620,y=10)
+        self.listProcessActivated = tkinter.Listbox(frame1, selectmode='extended')
         self.listProcessActivated.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
         self.listProcessActivated.place(x=620,y=32)
 
-        Label(self, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=0)
-        self.lbStateUI = Label(self, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
-        self.lbStateUI.place(x=38,y=0)
+        Label(frame1, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=0)
+        self.lbStateUI = Label(frame1, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
+        self.lbStateUI.place(x=38,y=0)        
 
-        self.btnSortWnd1 = Button(self, text="매크로 실행", command=lambda: self.controller.start(1))
-        self.btnSortWnd1.place(x=8,y=262)
-
-        self.checkReturnToVillBtn = Checkbutton(self,text="비상 시 단축키 사용",variable=self.checkReturnToVill)
+        self.checkReturnToVillBtn = Checkbutton(frame1,text="비상 시 단축키 사용",variable=self.checkReturnToVill)
         self.checkReturnToVillBtn   .place(x=0,y=42)        
-        self.tbShortcutUI = Entry(self, width=4, textvariable=self.tbShortcut)
+        self.tbShortcutUI = Entry(frame1, width=4, textvariable=self.tbShortcut)
         self.tbShortcutUI.place(x=160,y=44)
 
-        Label(self, text="반복 주기(초) :", anchor="w", width=11, height=1, padx=1, pady=2).place(x=0,y=72)
-        self.tbLoopTermUI = Entry(self, width=4, textvariable=self.tbLoopTerm)
+        Label(frame1, text="반복 주기(초) :", anchor="w", width=11, height=1, padx=1, pady=2).place(x=0,y=72)
+        self.tbLoopTermUI = Entry(frame1, width=4, textvariable=self.tbLoopTerm)
         self.tbLoopTermUI.place(x=160,y=74)
 
-        Label(self, text="창은 800x450 고정\nUI는 1단계로 설정하세요\n슬랙은 chat:write 활성화 필요", width=22, height=4, padx=1, pady=2, fg='blue').place(x=214,y=55)
+        Label(frame1, text="창은 800x450 고정\nUI는 1단계로 설정하세요\n슬랙은 chat:write 활성화 필요", width=22, height=4, padx=1, pady=2, fg='blue').place(x=214,y=55)
 
-        Label(self, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=102)
-        self.tbNonAttackUI = Entry(self, width=4, textvariable=self.tbNonAttack)
+        Label(frame1, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=102)
+        self.tbNonAttackUI = Entry(frame1, width=4, textvariable=self.tbNonAttack)
         self.tbNonAttackUI.place(x=160,y=104)
+        
+        self.checkConcourseBtn = Checkbutton(frame1,text="전투 중 모으기",variable=self.checkConcourse)
+        self.checkConcourseBtn.place(x=0,y=134)
+        
 
-        Label(self, text="슬랙 알람 전송", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=132)
+        self.btnFindWnd = Button(frame1, text="윈도우 찾기", command=self.controller.findWnd)
+        self.btnFindWnd.place(x=8,y=164)
+        
+        self.btnArrangeWnd = Button(frame1, text="윈도우 계단식 정렬", command=self.controller.arragngeWnd)
+        self.btnArrangeWnd.place(x=8,y=194)
 
-        Label(self, text="토큰 :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=162)
-        self.tbSlackTokenUI = Entry(self, width=32, textvariable=self.tbSlackToken)
-        self.tbSlackTokenUI.place(x=160,y=164)
+        self.btnFindWnd = Button(frame1, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
+        self.btnFindWnd.place(x=8,y=224)
+        
+        self.btnSortWnd1 = Button(frame1, text="매크로 실행", command=lambda: self.controller.start(1))
+        self.btnSortWnd1.place(x=8,y=262)
 
-        Label(self, text="채널명 :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=192)
-        self.tbChannelUI = Entry(self, width=32, textvariable=self.tbChannel)
-        self.tbChannelUI.place(x=160,y=194)
-
-        self.btnArrangeWnd = Button(self, text="윈도우 계단식 정렬", command=self.controller.arragngeWnd)
-        self.btnArrangeWnd.place(x=8,y=222)
-
-        self.btnFindWnd = Button(self, text="윈도우 찾기", command=self.controller.findWnd)
-        self.btnFindWnd.place(x=420,y=202)
-
-        self.btnFindWnd = Button(self, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
-        self.btnFindWnd.place(x=520,y=202)
-
-        self.btnSortWnd3 = Button(self, text="매크로 종료", command=self.controller.stop)
-        self.btnSortWnd3.place(x=516,y=262)
+        self.btnSortWnd3 = Button(frame1, text="매크로 종료", command=self.controller.stop)
+        self.btnSortWnd3.place(x=8,y=292)
         self.btnSortWnd3["state"] = "disabled"
         
-        self.checkConcourseBtn = Checkbutton(self,text="전투 중 모으기",variable=self.checkConcourse)
-        self.checkConcourseBtn   .place(x=0,y=292)
+        
 
-        self.btnMoveActivate = Button(self, text=">>", command=self.controller.moveActivate)
+        self.btnMoveActivate = Button(frame1, text=">>", command=self.controller.moveActivate)
         self.btnMoveActivate.place(x=580,y=80)
 
-        self.btnMoveDeactivate = Button(self, text="<<", command=self.controller.moveDeactivate)
+        self.btnMoveDeactivate = Button(frame1, text="<<", command=self.controller.moveDeactivate)
         self.btnMoveDeactivate.place(x=580,y=110)
         
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # 개별 세부 항목
+        frame_detail = tkinter.Frame(self)
+        notebook.add(frame_detail, text="개별 세부 항목")
+        
+        # 알람 설정
+        frame_alarm = tkinter.Frame(self)
+        notebook.add(frame_alarm, text="알람")
+        
+        Label(frame_alarm, text="슬랙 알람 전송", anchor="w", height=1, padx=1, pady=2).pack(side='top', anchor='center')
+        
+        Label(frame_alarm, text="토큰", anchor="w", height=1, padx=1, pady=2).pack(side='top', anchor='center')
+        self.tbSlackTokenUI = Entry(frame_alarm, width=32, textvariable=self.tbSlackToken)
+        self.tbSlackTokenUI.pack(side='top', anchor='center')
+
+        Label(frame_alarm, text="채널명", anchor="w", height=1, padx=1, pady=2).pack(side='top', anchor='center')
+        self.tbChannelUI = Entry(frame_alarm, width=32, textvariable=self.tbChannel)
+        self.tbChannelUI.pack(side='top', anchor='center')
         
         self.controller.findWnd()
         
