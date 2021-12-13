@@ -44,7 +44,8 @@ class ToolDlg( tkinter.Tk ):
         self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
         self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
         self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR)
-        
+        self._imgFavorateBtn = cv2.imread('./image/favorateBtn.png', cv2.IMREAD_COLOR)
+        self._imgFavorateBtn2 = cv2.imread('./image/favorateBtn2.png', cv2.IMREAD_COLOR)
         
     def initialize(self):
         self.title("MogulMogul v1.1")
@@ -56,7 +57,7 @@ class ToolDlg( tkinter.Tk ):
         self.checkReturnToVill = tkinter.IntVar()
         self.checkReturnToVill.set(1)        
         self.checkConcourse = tkinter.IntVar()
-        self.checkConcourse.set(1)        
+        self.checkConcourse.set(0)        
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
         self.tbLoopTerm = tkinter.StringVar()
@@ -67,62 +68,92 @@ class ToolDlg( tkinter.Tk ):
         self.tbSlackToken.set("xoxb-1436627767411-2747230415026-VHEhgdqFabJk3CvOSU5Yf3M3")
         self.tbChannel = tkinter.StringVar()
         self.tbChannel.set("#lineage_alert")
+        self.rbvMoveType = tkinter.IntVar()
+        self.rbvMoveType.set(1)
         self.tConcourse = time.time()
+        
+        _y = 10
+        dy = 36
         
         # 공통 설정 페이지
         notebook = tkinter.ttk.Notebook(self, width=780, height=450)
-        notebook.place(x=10,y=10)
+        notebook.place(x=10,y=_y)
         
         frame1 = tkinter.Frame(self)
         notebook.add(frame1, text="공통")
         
-        Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=10)
+        Label(frame1, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=_y)
+        self.lbStateUI = Label(frame1, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
+        self.lbStateUI.place(x=38,y=_y)    
+        
+        Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=_y)
         self.listProcess = tkinter.Listbox(frame1, selectmode='extended')
         self.listProcess.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
         self.listProcess.place(x=420,y=32)
 
-        Label(frame1, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=620,y=10)
+        Label(frame1, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=620,y=_y)
         self.listProcessActivated = tkinter.Listbox(frame1, selectmode='extended')
         self.listProcessActivated.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
         self.listProcessActivated.place(x=620,y=32)
-
-        Label(frame1, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=0)
-        self.lbStateUI = Label(frame1, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
-        self.lbStateUI.place(x=38,y=0)        
+        
+        _y+=dy
 
         self.checkReturnToVillBtn = Checkbutton(frame1,text="비상 시 단축키 사용",variable=self.checkReturnToVill)
-        self.checkReturnToVillBtn   .place(x=0,y=42)        
+        self.checkReturnToVillBtn   .place(x=0,y=_y)        
         self.tbShortcutUI = Entry(frame1, width=4, textvariable=self.tbShortcut)
-        self.tbShortcutUI.place(x=160,y=44)
+        self.tbShortcutUI.place(x=160,y=_y)
+        
+        _y+=dy
 
-        Label(frame1, text="반복 주기(초) :", anchor="w", width=11, height=1, padx=1, pady=2).place(x=0,y=72)
+        Label(frame1, text="반복 주기(초) :", anchor="w", width=11, height=1, padx=1, pady=2).place(x=0,y=_y)
         self.tbLoopTermUI = Entry(frame1, width=4, textvariable=self.tbLoopTerm)
-        self.tbLoopTermUI.place(x=160,y=74)
+        self.tbLoopTermUI.place(x=160,y=_y)
 
         Label(frame1, text="창은 800x450 고정\nUI는 1단계로 설정하세요\n슬랙은 chat:write 활성화 필요", width=22, height=4, padx=1, pady=2, fg='blue').place(x=214,y=55)
+        
+        _y+=dy
 
-        Label(frame1, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=102)
+        Label(frame1, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=_y)
         self.tbNonAttackUI = Entry(frame1, width=4, textvariable=self.tbNonAttack)
-        self.tbNonAttackUI.place(x=160,y=104)
+        self.tbNonAttackUI.place(x=160,y=_y)
+        
+        _y+=dy
         
         self.checkConcourseBtn = Checkbutton(frame1,text="전투 중 모으기",variable=self.checkConcourse)
-        self.checkConcourseBtn.place(x=0,y=134)
+        self.checkConcourseBtn.place(x=0,y=_y)
         
+        _y+=dy
 
         self.btnFindWnd = Button(frame1, text="윈도우 찾기", command=self.controller.findWnd)
-        self.btnFindWnd.place(x=8,y=164)
+        self.btnFindWnd.place(x=4,y=_y)       
+        
         
         self.btnArrangeWnd = Button(frame1, text="윈도우 계단식 정렬", command=self.controller.arragngeWnd)
-        self.btnArrangeWnd.place(x=8,y=194)
+        self.btnArrangeWnd.place(x=84,y=_y)       
+        
 
         self.btnFindWnd = Button(frame1, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
-        self.btnFindWnd.place(x=8,y=224)
+        self.btnFindWnd.place(x=204,y=_y)
+        
+        _y+=dy
+        
+        self.rbMoveType1 = Radiobutton(frame1, text="표식 이동", value=1, variable=self.rbvMoveType)
+        self.rbMoveType1.place(x=8, y=_y)
+        
+        self.rbMoveType2 = Radiobutton(frame1, text="즐겨찾기 이동", value=2, variable=self.rbvMoveType)
+        self.rbMoveType2.place(x=108, y=_y)
+        
+        _y+=dy
+        
+        _y+=dy
         
         self.btnSortWnd1 = Button(frame1, text="매크로 실행", command=lambda: self.controller.start(1))
-        self.btnSortWnd1.place(x=8,y=262)
+        self.btnSortWnd1.place(x=8,y=_y)
+        
+        _y+=dy
 
         self.btnSortWnd3 = Button(frame1, text="매크로 종료", command=self.controller.stop)
-        self.btnSortWnd3.place(x=8,y=292)
+        self.btnSortWnd3.place(x=8,y=_y)
         self.btnSortWnd3["state"] = "disabled"
         
         

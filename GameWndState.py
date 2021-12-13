@@ -18,6 +18,7 @@ class GWState(Enum):
     RETURN_TO_VILL = 1,
     GO_BUY_POSION = 2,
     GO_HUNT = 3,    
+    GO_HUNT_BY_FAVORATE = 4,
 
 """
 게임 윈도우 상태 관리 클래스    
@@ -148,6 +149,9 @@ class GameWndState:
         elif self.state == GWState.GO_HUNT:
             self.checkGoHunt()
             return
+        elif self.state == GWState.GO_HUNT_BY_FAVORATE:
+            self.checkGoHunt()
+            return            
 
         # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
         if isPowerSaveMode != True:
@@ -303,9 +307,13 @@ class GameWndState:
             time.sleep(0.3)
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
-            self.goPyosik()
             
-            self.setState(GWState.GO_HUNT)            
+            if self.app.rbvMoveType == 1:                
+                self.goPyosik()            
+                self.setState(GWState.GO_HUNT)
+            else:
+                self.goFavorate()            
+                self.setState(GWState.GO_HUNT_BY_FAVORATE)
             return True
         else:
             if (time.time() - self.tAction) >= 100:
@@ -344,36 +352,65 @@ class GameWndState:
                 self.setState(GWState.NORMAL)
                 return False
             
+    def goFavorate(self):
+        self.key_press(ord('M'))
+        time.sleep(1.5)
+        self.screenshot()
+        if self.isMatching(self.img, self.app._imgFavorateBtn):
+            _pos = self.getMatchPos(self.img, self.app._imgFavorateBtn)            
+            self.click(_pos[0],_pos[1])
+            time.sleep(0.8)
+            self.screenshot()
+            if self.isMatching(self.img, self.app._imgFavorateBtn2):
+                _pos = self.getMatchPos(self.img, self.app._imgFavorateBtn2)            
+                # 즐찾 클릭
+                self.click(_pos[0] + 30,_pos[1] + 5)
+                time.sleep(0.8)
+                self.click(707,412)
+                time.sleep(0.5)
+                self.click(452,275)
+        pass
+            
     def checkGoHunt(self):        
-        # 사냥 가는 길 체크가 어려움. 시간으로 체크한다
-        # 고급 이미지 프로세싱 필요
-        if (time.time() - self.tAction) >= 360:
-            logging.debug(f'{self} - 자동 사냥 시작')
-            self.tAutoHuntStart = time.time()
-            self.key_press(0xBD)
-            #self.click(736,257)
-            self.setState(GWState.NORMAL)
-        elif self.isMatching(self.img, self.app._checkmap):
-            # 사냥 이동 중에 포커싱을 풀면 지도화면으로 자동 변환 된다. 풀어주자.
-            self.key_press(win32con.VK_ESCAPE)
-            time.sleep(0.3)
-        else:
-            # 이진화 후 이동 시 깜빡 거리는 글씨를 체크 한다
-            check_moving = cv2.imread('./image/moving.png', cv2.IMREAD_GRAYSCALE)
-            gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-            ret, dst = cv2.threshold(gray, 74, 255, cv2.THRESH_BINARY)
-            _, mv, _, _ = cv2.minMaxLoc(cv2.matchTemplate(dst, check_moving, cv2.TM_CCOEFF_NORMED))
-            if mv >= 0.28:
-                self.goHuntCntEnd = 0
+        if self.state == GWState.GO_HUNT:
+            # 사냥 가는 길 체크가 어려움. 시간으로 체크한다
+            # 고급 이미지 프로세싱 필요
+            if (time.time() - self.tAction) >= 360:
+                logging.debug(f'{self} - 자동 사냥 시작')
+                self.tAutoHuntStart = time.time()
+                self.key_press(0xBD)
+                #self.click(736,257)
+                self.setState(GWState.NORMAL)
+            elif self.isMatching(self.img, self.app._checkmap):
+                # 사냥 이동 중에 포커싱을 풀면 지도화면으로 자동 변환 된다. 풀어주자.
+                self.key_press(win32con.VK_ESCAPE)
+                time.sleep(0.3)
             else:
-                self.goHuntCntEnd = self.goHuntCntEnd + 1
-        
-        if self.goHuntCntEnd >= 7:
+                # 이진화 후 이동 시 깜빡 거리는 글씨를 체크 한다
+                check_moving = cv2.imread('./image/moving.png', cv2.IMREAD_GRAYSCALE)
+                gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+                ret, dst = cv2.threshold(gray, 74, 255, cv2.THRESH_BINARY)
+                _, mv, _, _ = cv2.minMaxLoc(cv2.matchTemplate(dst, check_moving, cv2.TM_CCOEFF_NORMED))
+                if mv >= 0.28:
+                    self.goHuntCntEnd = 0
+                else:
+                    self.goHuntCntEnd = self.goHuntCntEnd + 1
+            
+            if self.goHuntCntEnd >= 7:
+                logging.debug(f'{self} - 자동 사냥 시작')
+                self.tAutoHuntStart = time.time()
+                self.key_press(0xBD)
+                #self.click(736,257)
+                self.setState(GWState.NORMAL)
+        else:
+            # 텔로 이동할 경우
+            time.sleep(2)
             logging.debug(f'{self} - 자동 사냥 시작')
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
             #self.click(736,257)
             self.setState(GWState.NORMAL)
+            pass
             
     def concourse(self):
         isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
