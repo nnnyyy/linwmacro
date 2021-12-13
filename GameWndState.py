@@ -226,7 +226,10 @@ class GameWndState:
     def uploadFile(self, filePath):
         if self.slackClient is None: return
         
-        self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
+        try:        
+            self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
+        except Exception as e:
+            pass
         
     def isOnVill(self):
         return self.isMatching(self.img, self.app._imgCheckVill)

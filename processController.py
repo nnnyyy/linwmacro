@@ -152,10 +152,14 @@ class ProcessController(object):
             # 사냥 시 일정 시간 간격으로 모으기
             if self.app.checkConcourse.get() == 1 and (time.time() - self.app.tConcourse) >= 1200:
                 for _gw in self.lineage_window_list:
-                    activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
-                    if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
-                        continue;
-                    _gw.concourse()
+                    try:
+                        activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
+                        if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
+                            continue;
+                        _gw.concourse()
+                    except Exception as e:
+                        print(f'{lw_title} 모으기 실패 -  {e}')
+                        logging.error(f'{lw_title} 모으기 실패 -  {e}')
                 self.app.tConcourse = time.time()
                 continue
             
