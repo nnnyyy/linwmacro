@@ -174,26 +174,29 @@ class GameWndState:
         if isAttacked:
             if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
                 self.click(744, 396)                
-                self.uploadFile('./screenshot.png')
+                self.uploadFile()
+                
+        # print('HP OK')
+        isHPOK = self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
+
+        # print('Weight')
+        isNoAttackByWeight = False
+        isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self.app._imgCheckNoAttackByWeight)                        
+        
+        if isDigit1:
+            # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
+            self.returnToVillage(self.app.tbShortcut.get())                
+            return
+
+        elif isHPOK == False:   
+            self.returnToVillage(self.app.tbShortcut.get())
+            return
+        elif isNoAttackByWeight:
+            self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')  
+            return
 
         if isAutoAttacking:                        
-            # print('HP OK')
-            isHPOK = self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
-
-            # print('Weight')
-            isNoAttackByWeight = False
-            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self.app._imgCheckNoAttackByWeight)                        
-            
-            if isDigit1:
-                # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
-                self.returnToVillage(self.app.tbShortcut.get())                
-                # self.post_message(_gw.name + ' : 물약을 보충하십시오.') 
-
-            elif isHPOK == False:   
-                self.returnToVillage(self.app.tbShortcut.get())
-                # self.post_message(_gw.name + ' : HP가 부족합니다.')
-            elif isNoAttackByWeight:
-                self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')            
+            pass          
         else:
             # 공격 중이 아닌 상태
             # 1. 일단 절전 모드를 끈다
@@ -227,10 +230,12 @@ class GameWndState:
         else:
             return False
         
-    def uploadFile(self, filePath):
+    def uploadFile(self):
         if self.slackClient is None: return
         
         try:        
+            filePath = './screenshot.png'
+            cv2.imwrite(filePath, self.img)
             self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
         except Exception as e:
             pass
