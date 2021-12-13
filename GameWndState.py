@@ -53,6 +53,10 @@ class GameWndState:
         self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
         self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)  
         self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
+        self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
+        self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
+        self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
+        self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
         
     
     def click(self, x, y):
@@ -160,16 +164,13 @@ class GameWndState:
             self.processOnPowerSaveMode() 
             
     def processOnPowerSaveMode(self):
-        _imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
-        _imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
-        _imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
-        _imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) 
+        
         
         isAutoAttacking = self.isMatching(self.img[290:329,324:477], self._imgCheckAutoAttack)
         
-        isAttacked = self.isMatching(self.img[290:329,324:477], _imgCheckAttacked)
+        isAttacked = self.isMatching(self.img[290:329,324:477], self._imgCheckAttacked)
         
-        isDigit1 = self.isMatching(self.img[413:417,364:369], _imgCheck1Digit)
+        isDigit1 = self.isMatching(self.img[413:417,364:369], self._imgCheck1Digit)
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
@@ -178,11 +179,11 @@ class GameWndState:
 
         if isAutoAttacking:                        
             # print('HP OK')
-            isHPOK = self.isMatching(self.img[24:31,68:110], _imgCheckHP) == False
+            isHPOK = self.isMatching(self.img[24:31,68:110], self._imgCheckHP) == False
 
             # print('Weight')
             isNoAttackByWeight = False
-            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], _imgCheckNoAttackByWeight)                        
+            isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self._imgCheckNoAttackByWeight)                        
             
             if isDigit1:
                 # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
