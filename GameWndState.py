@@ -12,6 +12,8 @@ shell = win32com.client.Dispatch("WScript.Shell")
 import logging
 from slack import WebClient
 import numpy as np
+import tkinter
+from tkinter import *
 
 class GWState(Enum):
     NORMAL = 0,
@@ -27,14 +29,22 @@ class GameWndState:
     from Tool import ToolDlg
     def __init__(self, hwnd, name, app:ToolDlg):
         self.hwnd = hwnd
-        self.name = name
-        self.setState(GWState.NORMAL)
+        self.name = name        
         self.loadImgs()
         self.tAutoHuntStart = time.time()
         self.tNoneAutoAttackAlertTime = 0
         self.tAttackedAlertMsg = 0
         self.app = app
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
+        self.lbvInfo = tkinter.StringVar()
+        self.lbInfo = Label(app.frame_detail, textvariable=self.lbvInfo)
+        self.lbvInfo.set(f"{self}: 대기")
+        self.lbInfo.pack()
+        self.setState(GWState.NORMAL)
+        
+    def __del__(self):
+        self.lbInfo.destroy()
+        pass
                 
     def __str__(self):
         return f'{self.name} : {self.hwnd}'
@@ -74,11 +84,26 @@ class GameWndState:
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(self.hwnd)
         
+    def resetState(self):
+        self.setState(GWState.NORMAL)
+        
     def setState(self, _state:GWState) :
         self.state = _state
-        self.tAction = time.time()    
+        self.tAction = time.time()
         if _state == GWState.GO_HUNT:
             self.goHuntCntEnd = 0
+
+        s = self.getStateStr(_state)
+        self.lbvInfo.set(f"{self}: {self.getStateStr(_state)}")
+            
+    def getStateStr(self, _state:GWState) :
+        if( _state == GWState.NORMAL ): return '일반'
+        elif( _state == GWState.RETURN_TO_VILL ): return '마을귀환'
+        elif( _state == GWState.GO_BUY_POSION ): return '물약구입'
+        elif( _state == GWState.GO_HUNT ): return '사냥하러'
+        elif( _state == GWState.GO_HUNT_BY_FAVORATE ): return '사냥하러(텔)'        
+        
+        return '-'
         
     """
     스크린샷 - Minimize나 화면 잠금 상태가 아니면 스크린샷을 찍는다        
@@ -130,7 +155,6 @@ class GameWndState:
         return self.img[y:dy,x:dx]
     
     def update(self):        
-        isPowerSaveMode = self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
         isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
             self.key_press(win32con.VK_ESCAPE)
@@ -151,45 +175,49 @@ class GameWndState:
             return
         elif self.state == GWState.GO_HUNT_BY_FAVORATE:
             self.checkGoHunt()
-            return            
+            return
+        
+        # 절전모드와 관계없이 hp가 낮으면 귀환 우선 ( UI 모양이 절전모양과 같아서 체크 가능)
+        if self.isHPOK() == False:
+            self.returnToVillage()  
+            return
 
         # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
-        if isPowerSaveMode != True:
+        if self.isPowerSaveMode() != True:
             self.goPowerSaveMode()
             self.app.tConcourse = time.time()
             return       
 
-        if isPowerSaveMode:
-            self.processOnPowerSaveMode() 
+        if self.isPowerSaveMode():
+            self.processOnPowerSaveMode()
+            
+    def isPowerSaveMode(self):
+        return self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
+    
+    def isHPOK(self):
+        return self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
             
     def processOnPowerSaveMode(self):
-        
-        
-        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
-        
-        isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)
-        
+        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)        
+        isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)        
         isDigit1 = self.isMatching(self.img[413:417,364:369], self.app._imgCheck1Digit)
 
         if isAttacked:
             if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
-                self.click(744, 396)                
+                self.teleport()               
                 self.uploadFile()
-                
-        # print('HP OK')
-        isHPOK = self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
 
-        # print('Weight')
         isNoAttackByWeight = False
         isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self.app._imgCheckNoAttackByWeight)                        
         
         if isDigit1:
             # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
-            self.returnToVillage(self.app.tbShortcut.get())                
+            # 최후에는 OCR 로 판별하도록 작업한다
+            self.returnToVillage()                
             return
 
-        elif isHPOK == False:   
-            self.returnToVillage(self.app.tbShortcut.get())
+        elif self.isHPOK() == False:   
+            self.returnToVillage()
             return
         elif isNoAttackByWeight:
             self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')  
@@ -251,18 +279,23 @@ class GameWndState:
     
     def goPowerSaveMode(self):
         self.key_press(ord('G'))
-        time.sleep(0.8)
+        time.sleep(0.5)
         
-        shell.SendKeys('%')
-        win32gui.SetForegroundWindow(self.hwnd)
         self.click(400, 220)
-        time.sleep(0.8)
+        time.sleep(0.4)
     
-    def returnToVillage(self, key):
+    def returnToVillage(self):
+        if self.isPowerSaveMode():
+            self.key_press(win32con.VK_ESCAPE)
+            time.sleep(1)
+        self.key_press(ord(self.app.tbShortcut.get().upper()))
+        self.setState(GWState.RETURN_TO_VILL)
+        
+    def teleport(self):
         self.key_press(win32con.VK_ESCAPE)
         time.sleep(1)
-        self.key_press(ord(key.upper()))
-        self.setState(GWState.RETURN_TO_VILL)
+        self.key_press(ord(self.app.tbShortcutTeleport.get().upper()))
+        pass
         
     def key_press(self, vk_key):
         win32gui.SendMessage(self.hwnd, win32con.WM_KEYDOWN, vk_key, 0)
@@ -313,7 +346,7 @@ class GameWndState:
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(0.3)
             
-            if self.app.rbvMoveType == 1:                
+            if self.app.rbvMoveType.get() == 1:                
                 self.goPyosik()            
                 self.setState(GWState.GO_HUNT)
             else:

@@ -213,8 +213,7 @@ class ProcessController(object):
         self.app.tbLoopTermUI["state"] = 'disabled'
         self.app.tbNonAttackUI["state"] = 'disabled'
         self.app.tbSlackTokenUI["state"] = 'disabled'
-        self.app.tbChannelUI["state"] = 'disabled'
-        self.app.checkReturnToVillBtn["state"] = 'disabled'    
+        self.app.tbChannelUI["state"] = 'disabled'        
 
     def click(self, x, y):
         (prevX,prevY) = pyautogui.position()
@@ -236,7 +235,6 @@ class ProcessController(object):
 
         # UI 상태 초기화
         self.app.btnSortWnd1["state"] = 'normal'     
-        self.app.checkReturnToVillBtn["state"] = 'normal'   
         self.app.tbShortcutUI["state"] = 'normal'
         self.app.tbLoopTermUI["state"] = 'normal'
         self.app.tbNonAttackUI["state"] = 'normal'
@@ -255,8 +253,14 @@ class ProcessController(object):
         for i in self.app.listProcess.curselection()[::-1]:
             self.app.listProcess.delete(i)    
 
-    def moveDeactivate(self):
+    def moveDeactivate(self):        
         for i in self.app.listProcessActivated.curselection():            
+            deactivateWndName = self.app.listProcessActivated.get(i)
+            for _gw in self.lineage_window_list:
+                lw_title = _gw.name
+                if lw_title == deactivateWndName:
+                    _gw.resetState()
+            
             self.app.listProcess.insert(0, self.app.listProcessActivated.get(i))
 
         for i in self.app.listProcessActivated.curselection()[::-1]:

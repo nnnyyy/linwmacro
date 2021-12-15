@@ -53,13 +53,13 @@ class ToolDlg( tkinter.Tk ):
         self.resizable(False, False)
         
         self.lbState = tkinter.StringVar()
-        self.lbState.set("대기 중")
-        self.checkReturnToVill = tkinter.IntVar()
-        self.checkReturnToVill.set(1)        
+        self.lbState.set("대기 중")           
         self.checkConcourse = tkinter.IntVar()
         self.checkConcourse.set(0)        
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
+        self.tbShortcutTeleport = tkinter.StringVar()
+        self.tbShortcutTeleport.set("6")        
         self.tbLoopTerm = tkinter.StringVar()
         self.tbLoopTerm.set("1")
         self.tbNonAttack = tkinter.StringVar()
@@ -98,14 +98,19 @@ class ToolDlg( tkinter.Tk ):
         
         _y+=dy
 
-        self.checkReturnToVillBtn = Checkbutton(frame1,text="비상 시 단축키 사용",variable=self.checkReturnToVill)
-        self.checkReturnToVillBtn   .place(x=0,y=_y)        
+        Label(frame1,text="귀환 단축키 설정", fg='blue').place(x=0,y=_y)        
         self.tbShortcutUI = Entry(frame1, width=4, textvariable=self.tbShortcut)
         self.tbShortcutUI.place(x=160,y=_y)
         
         _y+=dy
+        
+        Label(frame1,text="순간이동 단축키 설정", fg='blue').place(x=0,y=_y)        
+        self.tbShortcutTeleportUI = Entry(frame1, width=4, textvariable=self.tbShortcutTeleport)
+        self.tbShortcutTeleportUI.place(x=160,y=_y)
+        
+        _y+=dy
 
-        Label(frame1, text="반복 주기(초) :", anchor="w", width=11, height=1, padx=1, pady=2).place(x=0,y=_y)
+        Label(frame1, text="매크로 반복 주기(초) :", anchor="w", width=17, height=1, padx=1, pady=2, fg='blue').place(x=0,y=_y)
         self.tbLoopTermUI = Entry(frame1, width=4, textvariable=self.tbLoopTerm)
         self.tbLoopTermUI.place(x=160,y=_y)
 
@@ -113,9 +118,19 @@ class ToolDlg( tkinter.Tk ):
         
         _y+=dy
 
-        Label(frame1, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2).place(x=0,y=_y)
+        Label(frame1, text="비전투 알람 반복 주기(초) :", anchor="w", width=22, height=1, padx=1, pady=2, fg='blue').place(x=0,y=_y)
         self.tbNonAttackUI = Entry(frame1, width=4, textvariable=self.tbNonAttack)
         self.tbNonAttackUI.place(x=160,y=_y)
+        
+        _y+=dy
+        
+        Label(frame1, text="복귀 방식", fg='blue').place(x=0,y=_y)
+        
+        self.rbMoveType1 = Radiobutton(frame1, text="표식 이동", value=1, variable=self.rbvMoveType)
+        self.rbMoveType1.place(x=80, y=_y)
+        
+        self.rbMoveType2 = Radiobutton(frame1, text="즐겨찾기 이동", value=2, variable=self.rbvMoveType)
+        self.rbMoveType2.place(x=160, y=_y)
         
         _y+=dy
         
@@ -135,15 +150,8 @@ class ToolDlg( tkinter.Tk ):
         self.btnFindWnd = Button(frame1, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
         self.btnFindWnd.place(x=204,y=_y)
         
-        _y+=dy
+        _y+=dy        
         
-        self.rbMoveType1 = Radiobutton(frame1, text="표식 이동", value=1, variable=self.rbvMoveType)
-        self.rbMoveType1.place(x=8, y=_y)
-        
-        self.rbMoveType2 = Radiobutton(frame1, text="즐겨찾기 이동", value=2, variable=self.rbvMoveType)
-        self.rbMoveType2.place(x=108, y=_y)
-        
-        _y+=dy
         
         _y+=dy
         
@@ -167,8 +175,8 @@ class ToolDlg( tkinter.Tk ):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # 개별 세부 항목
-        frame_detail = tkinter.Frame(self)
-        notebook.add(frame_detail, text="개별 세부 항목")
+        self.frame_detail = tkinter.Frame(self)
+        notebook.add(self.frame_detail, text="개별 세부 항목")
         
         # 알람 설정
         frame_alarm = tkinter.Frame(self)
