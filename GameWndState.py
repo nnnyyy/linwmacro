@@ -289,7 +289,11 @@ class GameWndState:
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(1)
         self.key_press(ord(self.app.tbShortcut.get().upper()))
-        self.setState(GWState.RETURN_TO_VILL)
+        if self.app.cbvNoHuntOnlyAlarm.get() == 1:
+            self.sendAlertMsgDelay('마을로 복귀 했습니다')
+            self.setState(GWState.NORMAL)
+        else:
+            self.setState(GWState.RETURN_TO_VILL)
         
     def teleport(self):
         self.key_press(win32con.VK_ESCAPE)

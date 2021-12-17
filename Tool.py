@@ -55,7 +55,10 @@ class ToolDlg( tkinter.Tk ):
         self.lbState = tkinter.StringVar()
         self.lbState.set("대기 중")           
         self.checkConcourse = tkinter.IntVar()
-        self.checkConcourse.set(0)        
+        self.checkConcourse.set(0)       
+        
+        self.cbvNoHuntOnlyAlarm = tkinter.IntVar()
+        self.cbvNoHuntOnlyAlarm.set(0)        
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
         self.tbShortcutTeleport = tkinter.StringVar()
@@ -136,6 +139,9 @@ class ToolDlg( tkinter.Tk ):
         
         self.checkConcourseBtn = Checkbutton(frame1,text="전투 중 모으기",variable=self.checkConcourse)
         self.checkConcourseBtn.place(x=0,y=_y)
+        
+        self.cbNoHuntOnlyAlarm = Checkbutton(frame1,text="자동복귀 안하고 알람만",variable=self.cbvNoHuntOnlyAlarm)
+        self.cbNoHuntOnlyAlarm.place(x=150,y=_y)
         
         _y+=dy
 

@@ -190,7 +190,9 @@ class ProcessController(object):
                 except Exception as e:
                     print(f'{lw_title} -  {e}')
                     logging.error(f'{lw_title} -  {e}')
-                    # self.post_message(token, '#lineage_alert', 'error:' + e + ' ' + lw_title)
+                    self.app.post_message(f'{lw_title} : {e}')
+                    # 활성화 윈도우 초기화
+                    self.findWnd()
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0
