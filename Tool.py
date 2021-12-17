@@ -49,7 +49,7 @@ class ToolDlg( tkinter.Tk ):
         
     def initialize(self):
         self.title("MogulMogul v1.1")
-        self.geometry("800x500+100+100")
+        self.geometry("1024x500+100+100")
         self.resizable(False, False)
         
         self.lbState = tkinter.StringVar()
@@ -79,11 +79,13 @@ class ToolDlg( tkinter.Tk ):
         dy = 36
         
         # 공통 설정 페이지
-        notebook = tkinter.ttk.Notebook(self, width=780, height=450)
-        notebook.place(x=10,y=_y)
+        self.notebook = tkinter.ttk.Notebook(self, width=1004, height=450)
+        self.notebook.place(x=10,y=_y)
+        
+        
         
         frame1 = tkinter.Frame(self)
-        notebook.add(frame1, text="공통")
+        self.notebook.add(frame1, text="공통")
         
         Label(frame1, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=_y)
         self.lbStateUI = Label(frame1, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
@@ -145,16 +147,16 @@ class ToolDlg( tkinter.Tk ):
         
         _y+=dy
 
-        self.btnFindWnd = Button(frame1, text="윈도우 찾기", command=self.controller.findWnd)
+        self.btnFindWnd = Button(frame1, text="윈도우 초기화", command=self.controller.findWnd)
         self.btnFindWnd.place(x=4,y=_y)       
         
         
         self.btnArrangeWnd = Button(frame1, text="윈도우 계단식 정렬", command=self.controller.arragngeWnd)
-        self.btnArrangeWnd.place(x=84,y=_y)       
+        self.btnArrangeWnd.place(x=94,y=_y)       
         
 
         self.btnFindWnd = Button(frame1, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
-        self.btnFindWnd.place(x=204,y=_y)
+        self.btnFindWnd.place(x=214,y=_y)
         
         _y+=dy        
         
@@ -182,11 +184,11 @@ class ToolDlg( tkinter.Tk ):
         
         # 개별 세부 항목
         self.frame_detail = tkinter.Frame(self)
-        notebook.add(self.frame_detail, text="개별 세부 항목")
+        self.notebook.add(self.frame_detail, text="개별 세부 항목")
         
         # 알람 설정
         frame_alarm = tkinter.Frame(self)
-        notebook.add(frame_alarm, text="알람")
+        self.notebook.add(frame_alarm, text="알람")
         
         Label(frame_alarm, text="슬랙 알람 전송", anchor="w", height=1, padx=1, pady=2).pack(side='top', anchor='center')
         
@@ -198,6 +200,8 @@ class ToolDlg( tkinter.Tk ):
         self.tbChannelUI = Entry(frame_alarm, width=32, textvariable=self.tbChannel)
         self.tbChannelUI.pack(side='top', anchor='center')
         
+        self.controller.initUI()
+        
         self.controller.findWnd()
         
     def on_closing(self):
@@ -206,4 +210,5 @@ class ToolDlg( tkinter.Tk ):
     
     def post_message(self, text):
         response = requests.post("https://slack.com/api/chat.postMessage",
-        headers={"Authorization": "Bearer "+self.tbSlackToken.get()},data={"channel": self.tbChannel.get(),"text": text})
+        headers={"Authorization": "Bearer "+self.tbSlackToken.get()},data={"channel": self.tbChannel.get(),"text": text})       
+    

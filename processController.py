@@ -25,8 +25,12 @@ class ProcessController(object):
         self.lineage_window_list = [] 
         self.slackClient = None        
         self.app = app        
-        self.tCheckActivate = time.time()
+        self.tCheckActivate = time.time()        
+        
         logging.debug(f'컨트롤러 생성')
+        
+    def initUI(self):
+        self.app.notebook.bind('<<NotebookTabChanged>>', self.tabChanged)
     
     def refreshWnds(self):
         toplist = []
@@ -45,8 +49,7 @@ class ProcessController(object):
     
     def findWnd(self):
         # 윈도우 리셋                
-        self.app.listProcess.delete(0, END)
-        self.app.listProcessActivated.delete(0, END)
+        self.destroyWnds();        
         self.refreshWnds()        
 
         cnt = 0
@@ -54,8 +57,7 @@ class ProcessController(object):
             self.app.listProcess.insert(cnt, _gw.name)
             cnt += 1
 
-    def arragngeWnd(self):    
-        self.refreshWnds()
+    def arragngeWnd(self):
 
         screen_width = win32api.GetSystemMetrics(0)
         screen_height = win32api.GetSystemMetrics(1)
@@ -249,21 +251,54 @@ class ProcessController(object):
         win32gui.SendMessage(hwnd, win32con.WM_KEYUP, vk_key, 0)
 
     def moveActivate(self):
+        wndNames = []
         for i in self.app.listProcess.curselection():
-            self.app.listProcessActivated.insert(0, self.app.listProcess.get(i))
-
-        for i in self.app.listProcess.curselection()[::-1]:
-            self.app.listProcess.delete(i)    
+            _name = self.app.listProcess.get(i)
+            wndNames.append(_name)
+        
+        for _name in wndNames:
+            for _gw in self.lineage_window_list:
+                if _gw.name == _name: 
+                    _gw.setPause(False)
 
     def moveDeactivate(self):        
-        for i in self.app.listProcessActivated.curselection():            
-            deactivateWndName = self.app.listProcessActivated.get(i)
+        wndNames = []
+        for i in self.app.listProcessActivated.curselection():
+            _name = self.app.listProcessActivated.get(i)
+            wndNames.append(_name)
+        
+        for _name in wndNames:
             for _gw in self.lineage_window_list:
-                lw_title = _gw.name
-                if lw_title == deactivateWndName:
+                if _gw.name == _name: 
+                    _gw.setPause(True)
                     _gw.resetState()
-            
-            self.app.listProcess.insert(0, self.app.listProcessActivated.get(i))
+                    
+    def destroyWnds(self):
+        wndNames = []
+        for _name in self.app.listProcess.get(0, "end"):
+            wndNames.append(_name)
+        
+        for _name in wndNames:
+            for _gw in self.lineage_window_list:
+                if _gw.name == _name: 
+                    _gw.destroyAll()
+                    
+        
+        wndNames = []
+        for _name in self.app.listProcessActivated.get(0, "end"):
+            wndNames.append(_name)
 
-        for i in self.app.listProcessActivated.curselection()[::-1]:
-            self.app.listProcessActivated.delete(i)
+        
+        for _name in wndNames:
+            for _gw in self.lineage_window_list:
+                if _gw.name == _name: 
+                    _gw.destroyAll()
+                    
+        self.app.listProcess.delete(0, END)
+        self.app.listProcessActivated.delete(0, END)
+        
+    def tabChanged(self, *args):
+        _name = self.app.notebook.tab(self.app.notebook.select(), "text")
+        for _gw in self.lineage_window_list:
+            if _gw.name == _name:
+                _gw.setForeground()

@@ -29,25 +29,72 @@ class GameWndState:
     from Tool import ToolDlg
     def __init__(self, hwnd, name, app:ToolDlg):
         self.hwnd = hwnd
-        self.name = name        
+        self.name = name   
+        self.isPause = True     
         self.loadImgs()
         self.tAutoHuntStart = time.time()
         self.tNoneAutoAttackAlertTime = 0
         self.tAttackedAlertMsg = 0
         self.app = app
-        self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
-        self.lbvInfo = tkinter.StringVar()
-        self.lbInfo = Label(app.frame_detail, textvariable=self.lbvInfo)
-        self.lbvInfo.set(f"{self}: 대기")
-        self.lbInfo.pack()
-        self.setState(GWState.NORMAL)
+        self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
+        self.setState(GWState.NORMAL)        
+        self.initUI()        
         
-    def __del__(self):
-        self.lbInfo.destroy()
+    def __del__(self):                   
         pass
                 
     def __str__(self):
         return f'{self.name} : {self.hwnd}'
+    
+    def destroyAll(self):
+        self.app.notebook.forget(self.frame)
+    
+    def initUI(self):
+        self.frame = tkinter.Frame(self.app)
+        self.app.notebook.add(self.frame, text=self.name)
+        
+        _y = 10
+        dy = 36
+        
+        self.btnFindWnd = Button(self.frame, text="윈도우 찾기", command=self.setForeground)
+        self.btnFindWnd.place(x=4,y=_y)    
+        
+        _y += dy   
+        
+        self.tReturnToVillSometimes = time.time()
+        self.cbvReturnToVill = tkinter.IntVar()
+        self.cbReturnToVill = Checkbutton(self.frame,text="4시간 간격 복귀",variable=self.cbvReturnToVill)
+        self.cbReturnToVill.place(x=0,y=_y)
+        
+        _y += dy           
+        
+        self.btnPause = Button(self.frame, text="일시정지", command=lambda: self.setPause(True))
+        self.btnPause.place(x=4,y=_y)
+        self.btnPause["state"] =  'disabled'
+        
+        self.btnResume = Button(self.frame, text="재기동", command=lambda: self.setPause(False))
+        self.btnResume.place(x=74,y=_y)
+        
+        
+        
+    def isReturnToVillSometimes(self):
+        return self.cbvReturnToVill.get() == 1
+    
+    def setPause(self, isPause):
+        self.isPause = isPause
+        if isPause:
+            self.btnPause["state"] = 'disabled'
+            self.btnResume["state"] = 'normal'                                    
+            self.app.listProcessActivated.delete(self.app.listProcessActivated.get(0,"end").index(self.name))
+            self.app.listProcess.insert(0, self.name)
+        else:
+            self.btnPause["state"] = 'normal'
+            self.btnResume["state"] = 'disabled'
+            self.app.listProcess.delete(self.app.listProcess.get(0,"end").index(self.name))
+            self.app.listProcessActivated.insert(0, self.name)
+        
+    def isPaused(self):
+        return self.isPause
     
     def loadImgs(self):
         """self._checkAutoMoveBtn = cv2.imread(PATH_CHECK_AUTO_MOVE_BTN, cv2.IMREAD_COLOR)
@@ -94,7 +141,7 @@ class GameWndState:
             self.goHuntCntEnd = 0
 
         s = self.getStateStr(_state)
-        self.lbvInfo.set(f"{self}: {self.getStateStr(_state)}")
+        self.tReturnToVillSometimes = time.time()
             
     def getStateStr(self, _state:GWState) :
         if( _state == GWState.NORMAL ): return '일반'
@@ -154,7 +201,10 @@ class GameWndState:
         dy = y + h
         return self.img[y:dy,x:dx]
     
-    def update(self):        
+    def update(self):   
+        if self.isPaused():
+            return     
+        
         isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
             self.key_press(win32con.VK_ESCAPE)
@@ -197,7 +247,12 @@ class GameWndState:
     def isHPOK(self):
         return self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
             
-    def processOnPowerSaveMode(self):
+    def processOnPowerSaveMode(self):        
+        # 4시간마다 충전
+        if self.isReturnToVillSometimes() and time.time() - self.tReturnToVillSometimes >= (60 * 60 * 4):
+            self.returnToVillage()
+            return
+        
         isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)        
         isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)        
         isDigit1 = self.isMatching(self.img[413:417,364:369], self.app._imgCheck1Digit)
