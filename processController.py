@@ -30,7 +30,8 @@ class ProcessController(object):
         logging.debug(f'컨트롤러 생성')
         
     def initUI(self):
-        self.app.notebook.bind('<<NotebookTabChanged>>', self.tabChanged)
+        #self.app.notebook.bind('<<NotebookTabChanged>>', self.tabChanged)
+        pass
     
     def refreshWnds(self):
         toplist = []

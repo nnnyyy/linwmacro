@@ -42,6 +42,7 @@ class ToolDlg( tkinter.Tk ):
         self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
         self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
         self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
+        self._imgCheckMP = cv2.imread('./image/checkmp.png', cv2.IMREAD_COLOR)        
         self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
         self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR)
         self._imgFavorateBtn = cv2.imread('./image/favorateBtn.png', cv2.IMREAD_COLOR)

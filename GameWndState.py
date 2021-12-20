@@ -68,6 +68,12 @@ class GameWndState:
         
         _y += dy           
         
+        self.cbvControlMode = tkinter.IntVar()
+        self.cbControlMode = Checkbutton(self.frame,text="컨트롤 모드",variable=self.cbvControlMode)
+        self.cbControlMode.place(x=0,y=_y)
+        
+        _y += dy           
+        
         self.btnPause = Button(self.frame, text="일시정지", command=lambda: self.setPause(True))
         self.btnPause.place(x=4,y=_y)
         self.btnPause["state"] =  'disabled'
@@ -233,21 +239,72 @@ class GameWndState:
             return
 
         # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
-        if self.isPowerSaveMode() != True:
+        if self.isControlMode() != True and self.isPowerSaveMode() != True:
             self.goPowerSaveMode()
             self.app.tConcourse = time.time()
-            return       
+            return     
+        
+        if self.isControlMode() and self.isPowerSaveMode():
+            self.key_press(win32con.VK_ESCAPE)
+            return
+                          
 
         if self.isPowerSaveMode():
             self.processOnPowerSaveMode()
+        else:
+            self.processOnControlMode()
             
     def isPowerSaveMode(self):
         return self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
     
     def isHPOK(self):
         return self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
+    
+    def isHP70OK(self):
+        return self.isMatching(self.img[24:31,167:177], self.app._imgCheckHP) == False
+    
+    def isHP90OK(self):
+        return self.isMatching(self.img[24:31,195:210], self.app._imgCheckHP) == False
+    
+    def isMPOK(self):
+        img_mp = self.img[34:41,160:180]
+        return self.isMatching(img_mp, self.app._imgCheckMP)
+    
+    def isMP30OK(self):
+        img_mp = self.img[34:41,68:100]
+        return self.isMatching(img_mp, self.app._imgCheckMP)
+    
+    def useHealSelf(self):
+        if self.isControlMode() and self.isElf() and self.isMP30OK() and self.isHP90OK() == False:
+            self.key_press(ord('2'))
+            time.sleep(0.2)
+            self.key_press(ord('2'))
+            time.sleep(0.2)
+            return True
+        return False
+    
+    def useBloodToSoul(self):
+        if self.isControlMode() and self.isElf() and self.isMPOK() == False and self.isHP70OK():
+            self.key_press(ord('3'))
+            time.sleep(0.2)
+            return True
+        else: return False
+        
+    def useTripleShot(self):
+        if self.isControlMode() and self.isElf() and self.isMPOK() and self.isHP70OK():
+            self.key_press(ord('1'))
+            time.sleep(0.2)
+            return True
+        return False
+    
+    def isElf(self):
+        return True
+        
+    def isControlMode(self):
+        return self.cbvControlMode.get() == 1
             
-    def processOnPowerSaveMode(self):        
+    def processOnPowerSaveMode(self):
+        
         # 4시간마다 충전
         if self.isReturnToVillSometimes() and time.time() - self.tReturnToVillSometimes >= (60 * 60 * 4):
             self.returnToVillage()
@@ -292,6 +349,11 @@ class GameWndState:
             else:
                 # 2-2. 아니라면 자동전투 진행
                 self.concourse()
+                
+    def processOnControlMode(self):
+        if self.useHealSelf() == False:
+            if self.useBloodToSoul() == False:
+                self.useTripleShot()        
             
     def sendAlertMsgDelay(self, msg):
         tNonAttackTerm = int(self.app.tbNonAttack.get())
@@ -324,13 +386,7 @@ class GameWndState:
             pass
         
     def isOnVill(self):
-        return self.isMatching(self.img, self.app._imgCheckVill)
-
-    def processOnNormalMode(self):
-        
-        isCheckNoVill = self.isOnVill()
-        if isCheckNoVill:
-            self.key_press(ord(self.app.tbShortcut.get().upper()))     
+        return self.isMatching(self.img, self.app._imgCheckVill)     
     
     def goPowerSaveMode(self):
         self.key_press(ord('G'))
@@ -362,7 +418,7 @@ class GameWndState:
         
     def isMatching(self,src,temp,thhold=0.7):
         res = cv2.matchTemplate(src, temp, cv2.TM_CCOEFF_NORMED)                    
-        _, maxv, _, _ = cv2.minMaxLoc(res)
+        _, maxv, _, max_loc = cv2.minMaxLoc(res)
         return maxv >= thhold
     
     def getMatchPos(self,src,temp):
