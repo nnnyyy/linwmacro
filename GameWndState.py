@@ -257,16 +257,8 @@ class GameWndState:
     def isPowerSaveMode(self):
         return self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
     
-    def isMPOK(self):
-        img_mp = self.img[34:41,160:180]
-        return self.isMatching(img_mp, self.app._imgCheckMP)
-    
-    def isMP30OK(self):
-        img_mp = self.img[34:41,68:100]
-        return self.isMatching(img_mp, self.app._imgCheckMP)
-    
     def useHealSelf(self):
-        if self.isControlMode() and self.isElf() and self.isMP30OK() and self.getHPPercent() <= 80:
+        if self.isControlMode() and self.isElf() and self.getMPPercent() >= 20 and self.getHPPercent() <= 80:
             self.key_press(ord('2'))
             time.sleep(0.2)
             self.key_press(ord('2'))
@@ -275,14 +267,14 @@ class GameWndState:
         return False
     
     def useBloodToSoul(self):
-        if self.isControlMode() and self.isElf() and self.isMPOK() == False and self.getHPPercent() >= 90:
+        if self.isControlMode() and self.isElf() and self.getMPPercent() < 20 and self.getHPPercent() >= 80:
             self.key_press(ord('3'))
             time.sleep(0.2)
             return True
         else: return False
         
     def useTripleShot(self):
-        if self.isControlMode() and self.isElf() and self.isMPOK() and self.getHPPercent() >= 50:
+        if self.isControlMode() and self.isElf() and self.getMPPercent() >= 50 and self.getHPPercent() >= 50:
             self.key_press(ord('1'))
             time.sleep(0.2)
             return True
@@ -570,24 +562,50 @@ class GameWndState:
         img = cv2.cvtColor(np.array(self.img),  cv2.COLOR_RGB2BGR)
         img_hp = img[24:25,68:218]
         img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
-        ret, dst = cv2.threshold(img_hp_gray, 24, 255, cv2.THRESH_BINARY)    
+        ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
         _arr = dst[0][::-1]
         _arr2 = np.where(_arr == 255)[0]
         _temp = -1
         _cnt = 0
-        _findidx = 0
+        _findidx = _arr.size
         for x in _arr2:
             if _temp == -1:             
                 _cnt = _cnt + 1
-            elif (x - _temp) > 1:
+            elif (x - _temp) > 2:
                 _cnt = 1            
-            elif (x - _temp) == 1:
+            elif (x - _temp) <= 1:
                 _cnt = _cnt + 1   
                         
             _temp = x
             
-            if _cnt >= 5:
-                _findidx = x - 4
-                break    
+            if _cnt >= 7:
+                _findidx = x - 6
+                break 
+        _rate = 100 - (_findidx / _arr.size) * 100
+        return _rate
+    
+    def getMPPercent(self):
+        img = cv2.cvtColor(np.array(self.img),  cv2.COLOR_RGB2BGR)
+        img_hp = img[35:36,68:218]
+        img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
+        ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
+        _arr = dst[0][::-1]
+        _arr2 = np.where(_arr == 255)[0]
+        _temp = -1
+        _cnt = 0
+        _findidx = _arr.size
+        for x in _arr2:
+            if _temp == -1:             
+                _cnt = _cnt + 1
+            elif (x - _temp) > 2:
+                _cnt = 1            
+            elif (x - _temp) <= 1:
+                _cnt = _cnt + 1   
+                        
+            _temp = x
+            
+            if _cnt >= 7:
+                _findidx = x - 6
+                break 
         _rate = 100 - (_findidx / _arr.size) * 100
         return _rate
