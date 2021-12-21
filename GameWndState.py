@@ -234,7 +234,7 @@ class GameWndState:
             return
         
         # 절전모드와 관계없이 hp가 낮으면 귀환 우선 ( UI 모양이 절전모양과 같아서 체크 가능)
-        if self.isHPOK() == False:
+        if self.getHPPercent() <= 35:
             self.returnToVillage()  
             return
 
@@ -257,15 +257,6 @@ class GameWndState:
     def isPowerSaveMode(self):
         return self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
     
-    def isHPOK(self):
-        return self.isMatching(self.img[24:31,68:110], self.app._imgCheckHP) == False
-    
-    def isHP70OK(self):
-        return self.isMatching(self.img[24:31,167:177], self.app._imgCheckHP) == False
-    
-    def isHP90OK(self):
-        return self.isMatching(self.img[24:31,195:210], self.app._imgCheckHP) == False
-    
     def isMPOK(self):
         img_mp = self.img[34:41,160:180]
         return self.isMatching(img_mp, self.app._imgCheckMP)
@@ -275,7 +266,7 @@ class GameWndState:
         return self.isMatching(img_mp, self.app._imgCheckMP)
     
     def useHealSelf(self):
-        if self.isControlMode() and self.isElf() and self.isMP30OK() and self.isHP90OK() == False:
+        if self.isControlMode() and self.isElf() and self.isMP30OK() and self.getHPPercent() <= 80:
             self.key_press(ord('2'))
             time.sleep(0.2)
             self.key_press(ord('2'))
@@ -284,14 +275,14 @@ class GameWndState:
         return False
     
     def useBloodToSoul(self):
-        if self.isControlMode() and self.isElf() and self.isMPOK() == False and self.isHP70OK():
+        if self.isControlMode() and self.isElf() and self.isMPOK() == False and self.getHPPercent() >= 90:
             self.key_press(ord('3'))
             time.sleep(0.2)
             return True
         else: return False
         
     def useTripleShot(self):
-        if self.isControlMode() and self.isElf() and self.isMPOK() and self.isHP70OK():
+        if self.isControlMode() and self.isElf() and self.isMPOK() and self.getHPPercent() >= 50:
             self.key_press(ord('1'))
             time.sleep(0.2)
             return True
@@ -328,7 +319,7 @@ class GameWndState:
             self.returnToVillage()                
             return
 
-        elif self.isHPOK() == False:   
+        elif self.getHPPercent() <= 35:   
             self.returnToVillage()
             return
         elif isNoAttackByWeight:
@@ -574,3 +565,29 @@ class GameWndState:
         self.goPyosik()
         self.setState(GWState.GO_HUNT)
         logging.debug(f'{self} - 모으기')
+        
+    def getHPPercent(self):
+        img = cv2.cvtColor(np.array(self.img),  cv2.COLOR_RGB2BGR)
+        img_hp = img[24:25,68:218]
+        img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
+        ret, dst = cv2.threshold(img_hp_gray, 24, 255, cv2.THRESH_BINARY)    
+        _arr = dst[0][::-1]
+        _arr2 = np.where(_arr == 255)[0]
+        _temp = -1
+        _cnt = 0
+        _findidx = 0
+        for x in _arr2:
+            if _temp == -1:             
+                _cnt = _cnt + 1
+            elif (x - _temp) > 1:
+                _cnt = 1            
+            elif (x - _temp) == 1:
+                _cnt = _cnt + 1   
+                        
+            _temp = x
+            
+            if _cnt >= 5:
+                _findidx = x - 4
+                break    
+        _rate = 100 - (_findidx / _arr.size) * 100
+        return _rate
