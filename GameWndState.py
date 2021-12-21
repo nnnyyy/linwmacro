@@ -267,7 +267,7 @@ class GameWndState:
         return False
     
     def useBloodToSoul(self):
-        if self.isControlMode() and self.isElf() and self.getMPPercent() < 20 and self.getHPPercent() >= 80:
+        if self.isControlMode() and self.isElf() and self.getMPPercent() < 30 and self.getHPPercent() >= 60:
             self.key_press(ord('3'))
             time.sleep(0.2)
             return True
