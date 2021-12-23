@@ -162,6 +162,7 @@ class ToolDlg( tkinter.Tk ):
         
         _y+=dy        
         
+        Button(frame1, text="우편함 보상 받기", command=self.controller.getMailPresent).place(x=4,y=_y)
         
         _y+=dy
         

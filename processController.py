@@ -118,7 +118,12 @@ class ProcessController(object):
                 y = 90
                 
             self.setForegroundWnd(lw_hwnd)    
-            time.sleep(0.1)          
+            time.sleep(0.1)  
+            
+    def getMailPresent(self):
+        for gw in self.lineage_window_list:
+            gw.reserveCheckMail()
+        pass        
 
     def setForegroundWndByDoubleClick(self, event):
         for i in self.app.listProcess.curselection():

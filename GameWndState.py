@@ -41,12 +41,15 @@ map_list = [
 ]
 
 class GWState(Enum):
+    NONE = -1,
     NORMAL = 0,
     RETURN_TO_VILL = 1,
     GO_BUY_POSION = 2,
     GO_HUNT = 3,    
     GO_HUNT_BY_FAVORATE = 4,
     GO_HUNT_BY_TARGET = 5,
+    MOVE_TO_TARGET = 6,
+    CHECK_MAIL = 7
 
 """
 게임 윈도우 상태 관리 클래스    
@@ -56,7 +59,8 @@ class GameWndState:
     def __init__(self, hwnd, name, app:ToolDlg):
         self.hwnd = hwnd
         self.name = name   
-        self.isPause = True     
+        self.isPause = True   
+        self.reserveState = GWState.NONE  
         self.loadImgs()
         self.tAutoHuntStart = time.time()
         self.tNoneAutoAttackAlertTime = 0
@@ -95,7 +99,9 @@ class GameWndState:
         
         Button(self.frame, text="강제 귀환", command=self.forceReturn).place(x=104,y=_y)
         
-        Button(self.frame, text="우편 확인", command=self.checkMail).place(x=204,y=_y)
+        Button(self.frame, text="우편 확인", command=self.checkMail).place(x=184,y=_y)
+        
+        Button(self.frame, text="타겟 이동", command=self.moveToTarget).place(x=264,y=_y)
         
         
         _y += dy   
@@ -174,6 +180,9 @@ class GameWndState:
     def resetState(self):
         self.setState(GWState.NORMAL)
         
+    def setReserveState(self,_state:GWState):
+        self.reserveState = _state
+        
     def setState(self, _state:GWState) :
         self.state = _state
         self.tAction = time.time()
@@ -242,7 +251,10 @@ class GameWndState:
         return self.img[y:dy,x:dx]
     
     def update(self):
-        
+        if self.reserveState != GWState.NONE:
+            self.state = self.reserveState
+            self.reserveState = GWState.NONE
+            
         if self.isPaused():
             return     
         
@@ -269,6 +281,19 @@ class GameWndState:
             return
         elif self.state == GWState.GO_HUNT_BY_TARGET:
             self.checkGoHunt()
+            return
+        elif self.state ==  GWState.MOVE_TO_TARGET:
+            if self.isPowerSaveMode():
+                self.key_press(win32con.VK_ESCAPE)
+                time.sleep(0.5)
+                
+            self.key_press(0xBD)
+            self.goTarget()
+            self.setState(GWState.GO_HUNT_BY_TARGET)
+            return
+        elif self.state == GWState.CHECK_MAIL:
+            self.checkMail()
+            self.setState(GWState.NORMAL)
             return
         
         # 절전모드와 관계없이 hp가 낮으면 귀환 우선 ( UI 모양이 절전모양과 같아서 체크 가능)
@@ -569,6 +594,9 @@ class GameWndState:
         time.sleep(0.5)
         self.click(452,275)
         
+    def reserveCheckMail(self):
+        self.setReserveState(GWState.CHECK_MAIL)
+        
     def checkMail(self):
         self.key_press(win32con.VK_ESCAPE)
         time.sleep(0.5)
@@ -583,6 +611,10 @@ class GameWndState:
         self.key_press(win32con.VK_ESCAPE)
         time.sleep(0.5)
         self.goPowerSaveMode()
+        pass
+    
+    def moveToTarget(self):        
+        self.setReserveState(GWState.MOVE_TO_TARGET)
         pass
     
     def pasteClipboard(self):
