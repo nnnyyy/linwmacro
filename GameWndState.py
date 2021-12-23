@@ -1,9 +1,12 @@
+import win32api
 import win32gui
 import win32ui
 import win32com.client
 import win32con
 import pyautogui
 from ctypes import windll
+import ctypes
+_user32 = ctypes.WinDLL("user32")
 import PIL.Image
 import time
 import cv2
@@ -14,6 +17,28 @@ from slack import WebClient
 import numpy as np
 import tkinter
 from tkinter import *
+from tkinter import ttk
+import clipboard
+
+map_list = [
+    '비탄의 땅',
+    '죽음의 폐허',
+    '포도밭',
+    '정화의 대지',
+    '밀밭',
+    '네루가 오크 부락',
+    '아투바 오크 부락',
+    '두다 마라 오크 부락',
+    '글루디오 던전 1층',
+    '글루디오 던전 2층',
+    '글루디오 던전 3층',
+    '글루디오 던전 4층',
+    '글루디오 던전 5층',
+    '글루디오 던전 6층',
+    '요정 숲 던전 1층',
+    '요정 숲 던전 2층',
+    '요정 숲 던전 3층',
+]
 
 class GWState(Enum):
     NORMAL = 0,
@@ -21,6 +46,7 @@ class GWState(Enum):
     GO_BUY_POSION = 2,
     GO_HUNT = 3,    
     GO_HUNT_BY_FAVORATE = 4,
+    GO_HUNT_BY_TARGET = 5,
 
 """
 게임 윈도우 상태 관리 클래스    
@@ -38,7 +64,15 @@ class GameWndState:
         self.app = app
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         self.setState(GWState.NORMAL)        
-        self.initUI()        
+        self.initUI()  
+        
+        
+        # 설정 파일 값 불러오기
+        name_split = self.name.split()
+        setting = next((it for it in self.app.settings["list"] if it["name"] == name_split[-1]), None)      
+        if setting is not None:
+            self.comboMapList.set(setting["hunt_map"])
+            pass
         
     def __del__(self):                   
         pass
@@ -57,7 +91,12 @@ class GameWndState:
         dy = 36
         
         self.btnFindWnd = Button(self.frame, text="윈도우 찾기", command=self.setForeground)
-        self.btnFindWnd.place(x=4,y=_y)    
+        self.btnFindWnd.place(x=4,y=_y)   
+        
+        Button(self.frame, text="강제 귀환", command=self.forceReturn).place(x=104,y=_y)
+        
+        Button(self.frame, text="우편 확인", command=self.checkMail).place(x=204,y=_y)
+        
         
         _y += dy   
         
@@ -81,7 +120,11 @@ class GameWndState:
         self.btnResume = Button(self.frame, text="재기동", command=lambda: self.setPause(False))
         self.btnResume.place(x=74,y=_y)
         
+        _y += dy
         
+        self.comboMapList = ttk.Combobox(self.frame, values=map_list, state="readonly")
+        self.comboMapList.current(0)
+        self.comboMapList.place(x=5,y=_y)        
         
     def isReturnToVillSometimes(self):
         return self.cbvReturnToVill.get() == 1
@@ -103,19 +146,7 @@ class GameWndState:
         return self.isPause
     
     def loadImgs(self):
-        """self._checkAutoMoveBtn = cv2.imread(PATH_CHECK_AUTO_MOVE_BTN, cv2.IMREAD_COLOR)
-        self._checkShop = cv2.imread(PATH_CHECK_SHOP, cv2.IMREAD_COLOR)
-        self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)
-        self._imgCheckShopBtnWithMove = cv2.imread('./image/checkShopBtnWithMove.png', cv2.IMREAD_COLOR)   
-        self._checkmap = cv2.imread(PATH_CHECK_WORLDMAP, cv2.IMREAD_COLOR) 
-        self._imgCheckSavePower = cv2.imread('./image/checksavepower.png', cv2.IMREAD_COLOR)               
-        self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
-        self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)  
-        self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
-        self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
-        self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
-        self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
-        self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR) """
+        pass
         
     
     def click(self, x, y):
@@ -136,6 +167,9 @@ class GameWndState:
     def setForeground(self):
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(self.hwnd)
+        
+    def forceReturn(self):
+        self.returnToVillage()
         
     def resetState(self):
         self.setState(GWState.NORMAL)
@@ -207,7 +241,8 @@ class GameWndState:
         dy = y + h
         return self.img[y:dy,x:dx]
     
-    def update(self):   
+    def update(self):
+        
         if self.isPaused():
             return     
         
@@ -232,6 +267,9 @@ class GameWndState:
         elif self.state == GWState.GO_HUNT_BY_FAVORATE:
             self.checkGoHunt()
             return
+        elif self.state == GWState.GO_HUNT_BY_TARGET:
+            self.checkGoHunt()
+            return
         
         # 절전모드와 관계없이 hp가 낮으면 귀환 우선 ( UI 모양이 절전모양과 같아서 체크 가능)
         if self.getHPPercent() <= 35:
@@ -246,8 +284,7 @@ class GameWndState:
         
         if self.isControlMode() and self.isPowerSaveMode():
             self.key_press(win32con.VK_ESCAPE)
-            return
-                          
+            return                          
 
         if self.isPowerSaveMode():
             self.processOnPowerSaveMode()
@@ -447,9 +484,12 @@ class GameWndState:
             if self.app.rbvMoveType.get() == 1:                
                 self.goPyosik()            
                 self.setState(GWState.GO_HUNT)
-            else:
+            elif self.app.rbvMoveType.get() == 2:
                 self.goFavorate()            
                 self.setState(GWState.GO_HUNT_BY_FAVORATE)
+            else:
+                self.goTarget()
+                self.setState(GWState.GO_HUNT_BY_TARGET)
             return True
         else:
             if (time.time() - self.tAction) >= 100:
@@ -505,6 +545,60 @@ class GameWndState:
                 self.click(707,412)
                 time.sleep(0.5)
                 self.click(452,275)
+    
+    def goTarget(self):
+        self.key_press(ord('M'))
+        time.sleep(1.5)
+        self.screenshot()
+        if self.isMatching(self.img, self.app._imgMapSearch):
+            _pos = self.getMatchPos(self.img, self.app._imgMapSearch )            
+            self.click(_pos[0],_pos[1])
+            time.sleep(0.5)
+            self.pasteClipboard()            
+        elif self.isMatching(self.img, self.app._imgMapHamberger):
+            _pos = self.getMatchPos(self.img, self.app._imgMapHamberger )            
+            self.click(_pos[0],_pos[1])
+            time.sleep(0.5)
+            self.click(_pos[0],_pos[1])
+            time.sleep(0.5)
+            self.pasteClipboard()
+            
+        self.click(74, 101)
+        time.sleep(0.5)
+        self.click(707,412)
+        time.sleep(0.5)
+        self.click(452,275)
+        
+    def checkMail(self):
+        self.key_press(win32con.VK_ESCAPE)
+        time.sleep(0.5)
+        self.click(772,19) # 햄버거 메뉴 클릭
+        time.sleep(0.2)
+        self.click(734,244) # 우편 클릭
+        time.sleep(0.2)
+        self.click(457,412) # 모두 받기 클릭
+        time.sleep(1)
+        self.click(400,318) # 확인 버튼
+        time.sleep(0.5)
+        self.key_press(win32con.VK_ESCAPE)
+        time.sleep(0.5)
+        self.goPowerSaveMode()
+        pass
+    
+    def pasteClipboard(self):
+        clipboard.copy(self.comboMapList.get() + ' ')
+        key = ord('V')
+        lparam = win32api.MAKELONG(0,_user32.MapVirtualKeyA(key, 0))
+        lparam_ctrl = win32api.MAKELONG(0,_user32.MapVirtualKeyA(win32con.VK_CONTROL, 0)) | 0x00000001
+        
+        time.sleep(0.1) # тестирования ради
+        win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, win32con.VK_CONTROL, lparam_ctrl)
+        time.sleep(0.1)
+        win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, key, lparam)
+        time.sleep(0.1)
+        win32api.PostMessage(self.hwnd, win32con.WM_KEYDOWN, win32con.VK_BACK, lparam)
+        time.sleep(0.5)
+        
         pass
             
     def checkGoHunt(self):        

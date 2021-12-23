@@ -18,13 +18,11 @@ class ToolDlg( tkinter.Tk ):
         # json 옵션 파일 사용 예정
         if not os.path.exists('./setting.json'):
             with open('./setting.json','w+') as outfile:
-                _d = {}
-                _d['test'] = '123'
-                json.dump(_d, outfile, indent=4)
+                self.settings = {}
+                json.dump(self.settings, outfile, indent=4)
         else:
-            with open('./setting.json', 'r') as jsonfile:
-                _d2 = json.load(jsonfile)
-                print(_d2)
+            with open('./setting.json', 'r', encoding='UTF8') as jsonfile:
+                self.settings = json.load(jsonfile)                                
         
         self.parent = parent
         from processController import ProcessController                
@@ -40,13 +38,13 @@ class ToolDlg( tkinter.Tk ):
         self._imgPowerSaveMenu = cv2.imread('./image/powersavemenu.png', cv2.IMREAD_COLOR)   
         self._imgCheckAutoAttack = cv2.imread('./image/autoattack.png', cv2.IMREAD_COLOR)  
         self._imgCheckVill = cv2.imread('./image/checkvil.png', cv2.IMREAD_COLOR)   
-        self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)
-        self._imgCheckHP = cv2.imread('./image/checkhp.png', cv2.IMREAD_COLOR)        
-        self._imgCheckMP = cv2.imread('./image/checkmp.png', cv2.IMREAD_COLOR)        
+        self._imgCheck1Digit = cv2.imread('./image/check1digit.png', cv2.IMREAD_COLOR)        
         self._imgCheckNoAttackByWeight = cv2.imread('./image/checknoattackbyweight.png', cv2.IMREAD_COLOR)                
         self._imgCheckAttacked = cv2.imread('./image/attacked.png', cv2.IMREAD_COLOR)
         self._imgFavorateBtn = cv2.imread('./image/favorateBtn.png', cv2.IMREAD_COLOR)
         self._imgFavorateBtn2 = cv2.imread('./image/favorateBtn2.png', cv2.IMREAD_COLOR)
+        self._imgMapHamberger = cv2.imread('./image/map_hamberger.png', cv2.IMREAD_COLOR)
+        self._imgMapSearch = cv2.imread('./image/map_search.png', cv2.IMREAD_COLOR)        
         
     def initialize(self):
         self.title("MogulMogul v1.1")
@@ -73,7 +71,7 @@ class ToolDlg( tkinter.Tk ):
         self.tbChannel = tkinter.StringVar()
         self.tbChannel.set("#lineage_alert")
         self.rbvMoveType = tkinter.IntVar()
-        self.rbvMoveType.set(1)
+        self.rbvMoveType.set(3)
         self.tConcourse = time.time()
         
         _y = 10
@@ -137,6 +135,9 @@ class ToolDlg( tkinter.Tk ):
         
         self.rbMoveType2 = Radiobutton(frame1, text="즐겨찾기 이동", value=2, variable=self.rbvMoveType)
         self.rbMoveType2.place(x=160, y=_y)
+        
+        self.rbMoveType3 = Radiobutton(frame1, text="타겟 이동", value=3, variable=self.rbvMoveType)
+        self.rbMoveType3.place(x=240, y=_y)
         
         _y+=dy
         
@@ -211,5 +212,5 @@ class ToolDlg( tkinter.Tk ):
     
     def post_message(self, text):
         response = requests.post("https://slack.com/api/chat.postMessage",
-        headers={"Authorization": "Bearer "+self.tbSlackToken.get()},data={"channel": self.tbChannel.get(),"text": text})       
+        headers={"Authorization": "Bearer "+self.tbSlackToken.get()},data={"channel": self.tbChannel.get(),"text": text})
     
