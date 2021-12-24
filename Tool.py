@@ -2,6 +2,7 @@ import requests
 import tkinter
 import time
 from tkinter import *
+from tkinter import ttk
 import tkinter.ttk
 import cv2
 import json
@@ -14,6 +15,27 @@ PATH_CHECK_SHOP = './image/checkshop.png'
 class ToolDlg( tkinter.Tk ):
     def __init__(self, parent):
         tkinter.Tk.__init__(self, parent)
+        
+        self.map_list = [
+            '비탄의 땅',
+            '죽음의 폐허',
+            '포도밭',
+            '정화의 대지',
+            '밀밭',
+            '네루가 오크 부락',
+            '아투바 오크 부락',
+            '두다 마라 오크 부락',
+            '글루디오 던전 1층',
+            '글루디오 던전 2층',
+            '글루디오 던전 3층',
+            '글루디오 던전 4층',
+            '글루디오 던전 5층',
+            '글루디오 던전 6층',
+            '요정 숲 던전 1층',
+            '요정 숲 던전 2층',
+            '요정 숲 던전 3층',
+            '황무지',
+        ]
         
         # json 옵션 파일 사용 예정
         if not os.path.exists('./setting.json'):
@@ -44,20 +66,25 @@ class ToolDlg( tkinter.Tk ):
         self._imgFavorateBtn = cv2.imread('./image/favorateBtn.png', cv2.IMREAD_COLOR)
         self._imgFavorateBtn2 = cv2.imread('./image/favorateBtn2.png', cv2.IMREAD_COLOR)
         self._imgMapHamberger = cv2.imread('./image/map_hamberger.png', cv2.IMREAD_COLOR)
-        self._imgMapSearch = cv2.imread('./image/map_search.png', cv2.IMREAD_COLOR)        
+        self._imgMapSearch = cv2.imread('./image/map_search.png', cv2.IMREAD_COLOR)       
+        
+       
+        
+    def reloadSetting(self):
+        with open('./setting.json', 'r', encoding='UTF8') as jsonfile:
+            self.settings = json.load(jsonfile) 
+            
+        for gw in self.controller.lineage_window_list:
+            gw.reloadSetting()
+            
+    def saveSetting(self):        
+        pass
         
     def initialize(self):
         self.title("MogulMogul v1.1")
-        self.geometry("1024x500+100+100")
+        self.geometry("1024x768+100+100")
         self.resizable(False, False)
-        
-        self.lbState = tkinter.StringVar()
-        self.lbState.set("대기 중")           
-        self.checkConcourse = tkinter.IntVar()
-        self.checkConcourse.set(0)       
-        
-        self.cbvNoHuntOnlyAlarm = tkinter.IntVar()
-        self.cbvNoHuntOnlyAlarm.set(0)        
+           
         self.tbShortcut = tkinter.StringVar()
         self.tbShortcut.set("5")
         self.tbShortcutTeleport = tkinter.StringVar()
@@ -78,29 +105,44 @@ class ToolDlg( tkinter.Tk ):
         dy = 36
         
         # 공통 설정 페이지
-        self.notebook = tkinter.ttk.Notebook(self, width=1004, height=450)
+        self.notebook = tkinter.ttk.Notebook(self, width=1004, height=718)
         self.notebook.place(x=10,y=_y)
         
+        menubar=tkinter.Menu(self)
+        menu_1=tkinter.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="편의기능", menu=menu_1)
+        menu_1.add_command(label="설정 리로드", command=self.reloadSetting)
+        menu_1.add_command(label="설정 저장", command=self.saveSetting)        
+        menu_1.add_command(label="우편함 보상 받기", command=self.controller.getMailPresent)
+        self.config(menu=menubar)
         
+        
+        menu_2=tkinter.Menu(menubar, tearoff=0, selectcolor="red")
+        menubar.add_cascade(label="윈도우", menu=menu_2)
+        menu_2.add_command(label="새로고침", command=self.controller.findWnd)
+        menu_2.add_command(label="계단식 정렬", command=self.controller.arragngeWnd)        
+        menu_2.add_command(label="바둑판 정렬(선택된 것만)", command=self.controller.arragngeWndSelected)        
         
         frame1 = tkinter.Frame(self)
-        self.notebook.add(frame1, text="공통")
+        self.notebook.add(frame1, text="공통")        
         
-        Label(frame1, text="상태 :", width=4, height=1, padx=1, pady=2).place(x=0,y=_y)
-        self.lbStateUI = Label(frame1, width=14, height=1, fg="red", anchor="w", padx=1, pady=2, textvariable=self.lbState)
-        self.lbStateUI.place(x=38,y=_y)    
         
-        Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=420,y=_y)
-        self.listProcess = tkinter.Listbox(frame1, selectmode='extended')
-        self.listProcess.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
-        self.listProcess.place(x=420,y=32)
+        
+        Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=400,y=_y)
+        self.listProcess = tkinter.Listbox(frame1, selectmode='extended')        
+        self.listProcess.bind('<<ListboxSelect>>', self.controller.setForegroundWndByDoubleClick)
+        self.listProcess.place(x=400,y=32)
+        
+        self.btnMoveActivate = Button(frame1, text=">>", command=self.controller.moveActivate)
+        self.btnMoveActivate.place(x=560,y=80)
 
-        Label(frame1, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=620,y=_y)
+        self.btnMoveDeactivate = Button(frame1, text="<<", command=self.controller.moveDeactivate)
+        self.btnMoveDeactivate.place(x=560,y=110)
+
+        Label(frame1, text="활성 프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=600,y=_y)
         self.listProcessActivated = tkinter.Listbox(frame1, selectmode='extended')
-        self.listProcessActivated.bind('<Double-1>', self.controller.setForegroundWndByDoubleClick)
-        self.listProcessActivated.place(x=620,y=32)
-        
-        _y+=dy
+        self.listProcessActivated.bind('<<ListboxSelect>>', self.controller.setForegroundWndByDoubleClick)
+        self.listProcessActivated.place(x=600,y=32)
 
         Label(frame1,text="귀환 단축키 설정", fg='blue').place(x=0,y=_y)        
         self.tbShortcutUI = Entry(frame1, width=4, textvariable=self.tbShortcut)
@@ -116,9 +158,7 @@ class ToolDlg( tkinter.Tk ):
 
         Label(frame1, text="매크로 반복 주기(초) :", anchor="w", width=17, height=1, padx=1, pady=2, fg='blue').place(x=0,y=_y)
         self.tbLoopTermUI = Entry(frame1, width=4, textvariable=self.tbLoopTerm)
-        self.tbLoopTermUI.place(x=160,y=_y)
-
-        Label(frame1, text="창은 800x450 고정\nUI는 1단계로 설정하세요\n슬랙은 chat:write 활성화 필요", width=22, height=4, padx=1, pady=2, fg='blue').place(x=214,y=55)
+        self.tbLoopTermUI.place(x=160,y=_y)        
         
         _y+=dy
 
@@ -139,49 +179,24 @@ class ToolDlg( tkinter.Tk ):
         self.rbMoveType3 = Radiobutton(frame1, text="타겟 이동", value=3, variable=self.rbvMoveType)
         self.rbMoveType3.place(x=240, y=_y)
         
-        _y+=dy
-        
-        self.checkConcourseBtn = Checkbutton(frame1,text="전투 중 모으기",variable=self.checkConcourse)
-        self.checkConcourseBtn.place(x=0,y=_y)
-        
-        self.cbNoHuntOnlyAlarm = Checkbutton(frame1,text="자동복귀 안하고 알람만",variable=self.cbvNoHuntOnlyAlarm)
-        self.cbNoHuntOnlyAlarm.place(x=150,y=_y)
-        
-        _y+=dy
-
-        self.btnFindWnd = Button(frame1, text="윈도우 초기화", command=self.controller.findWnd)
-        self.btnFindWnd.place(x=4,y=_y)       
-        
-        
-        self.btnArrangeWnd = Button(frame1, text="윈도우 계단식 정렬", command=self.controller.arragngeWnd)
-        self.btnArrangeWnd.place(x=94,y=_y)       
-        
-
-        self.btnFindWnd = Button(frame1, text="선택된 윈도우 바둑판 정렬", command=self.controller.arragngeWndSelected)
-        self.btnFindWnd.place(x=214,y=_y)
-        
         _y+=dy        
         
-        Button(frame1, text="우편함 보상 받기", command=self.controller.getMailPresent).place(x=4,y=_y)
+        self.comboMapList = ttk.Combobox(frame1, values=self.map_list, state="readonly")
+        self.comboMapList.current(0)
+        self.comboMapList.place(x=4,y=_y+2)
+        
+        Button(frame1, text="선택된 윈도우 맵 일괄 변경", command=self.controller.changeMapSelected).place(x=184,y=_y)
         
         _y+=dy
         
         self.btnSortWnd1 = Button(frame1, text="매크로 실행", command=lambda: self.controller.start(1))
-        self.btnSortWnd1.place(x=8,y=_y)
+        self.btnSortWnd1.place(x=4,y=_y)
         
-        _y+=dy
-
         self.btnSortWnd3 = Button(frame1, text="매크로 종료", command=self.controller.stop)
-        self.btnSortWnd3.place(x=8,y=_y)
+        self.btnSortWnd3.place(x=84,y=_y)
         self.btnSortWnd3["state"] = "disabled"
         
-        
-
-        self.btnMoveActivate = Button(frame1, text=">>", command=self.controller.moveActivate)
-        self.btnMoveActivate.place(x=580,y=80)
-
-        self.btnMoveDeactivate = Button(frame1, text="<<", command=self.controller.moveDeactivate)
-        self.btnMoveDeactivate.place(x=580,y=110)
+        _y+=dy       
         
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
@@ -206,6 +221,8 @@ class ToolDlg( tkinter.Tk ):
         self.controller.initUI()
         
         self.controller.findWnd()
+        
+        self.controller.start(1)
         
     def on_closing(self):
         self.controller.stop()

@@ -8,6 +8,7 @@ from ctypes import windll
 import ctypes
 _user32 = ctypes.WinDLL("user32")
 import PIL.Image
+from PIL import ImageTk
 import time
 import cv2
 from enum import Enum
@@ -19,26 +20,6 @@ import tkinter
 from tkinter import *
 from tkinter import ttk
 import clipboard
-
-map_list = [
-    '비탄의 땅',
-    '죽음의 폐허',
-    '포도밭',
-    '정화의 대지',
-    '밀밭',
-    '네루가 오크 부락',
-    '아투바 오크 부락',
-    '두다 마라 오크 부락',
-    '글루디오 던전 1층',
-    '글루디오 던전 2층',
-    '글루디오 던전 3층',
-    '글루디오 던전 4층',
-    '글루디오 던전 5층',
-    '글루디오 던전 6층',
-    '요정 숲 던전 1층',
-    '요정 숲 던전 2층',
-    '요정 숲 던전 3층',
-]
 
 class GWState(Enum):
     NONE = -1,
@@ -56,9 +37,10 @@ class GWState(Enum):
 """
 class GameWndState:
     from Tool import ToolDlg
-    def __init__(self, hwnd, name, app:ToolDlg):
+    def __init__(self, hwnd, name, app:ToolDlg, idx):
         self.hwnd = hwnd
         self.name = name   
+        self.idx = idx
         self.isPause = True   
         self.reserveState = GWState.NONE  
         self.loadImgs()
@@ -68,15 +50,13 @@ class GameWndState:
         self.app = app
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         self.setState(GWState.NORMAL)        
-        self.initUI()  
         
+        self.cbvControlMode = tkinter.IntVar()
+        
+        self.initUI()
         
         # 설정 파일 값 불러오기
-        name_split = self.name.split()
-        setting = next((it for it in self.app.settings["list"] if it["name"] == name_split[-1]), None)      
-        if setting is not None:
-            self.comboMapList.set(setting["hunt_map"])
-            pass
+        self.reloadSetting()
         
     def __del__(self):                   
         pass
@@ -85,61 +65,62 @@ class GameWndState:
         return f'{self.name} : {self.hwnd}'
     
     def destroyAll(self):
-        self.app.notebook.forget(self.frame)
+        self.frame.forget()
+        
+    def reloadSetting(self):
+        name_split = self.name.split()
+        self.setting = next((it for it in self.app.settings["list"] if it["name"] == name_split[-1]), None)        
+        
+        try:            
+            if self.comboMapList is not None: self.comboMapList.set(self.setting["hunt_map"])
+        except Exception as e:
+            pass
     
-    def initUI(self):
-        self.frame = tkinter.Frame(self.app)
-        self.app.notebook.add(self.frame, text=self.name)
+    def initUI(self):        
+        row_cnt = 5
+        self.frame = tkinter.LabelFrame(self.app.frame_detail, text=self.name)        
+        self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))
         
-        _y = 10
-        dy = 36
+        self.canvas = tkinter.Canvas(self.frame,width=26,height=31)
+        self.canvas.pack()    
         
-        self.btnFindWnd = Button(self.frame, text="윈도우 찾기", command=self.setForeground)
-        self.btnFindWnd.place(x=4,y=_y)   
+        self.canvas2 = tkinter.Canvas(self.frame,width=114,height=17)
+        self.canvas2.pack()                
         
-        Button(self.frame, text="강제 귀환", command=self.forceReturn).place(x=104,y=_y)
+        self.lbvHPMP = tkinter.StringVar()
+        self.lbvHPMP.set("")
+        tkinter.Label(self.frame, textvariable=self.lbvHPMP).pack(pady=1)
         
-        Button(self.frame, text="우편 확인", command=self.checkMail).place(x=184,y=_y)
+        self.btnFrame = tkinter.LabelFrame(self.frame, text="액션 버튼")
+        self.btnFrame.pack(fill='both')
+        Button(self.btnFrame, text="윈도우 찾기", command=self.setForeground).grid(row=0,column=0)
+        Button(self.btnFrame, text="강제 귀환", command=self.forceReturn).grid(row=0,column=1)        
+        Button(self.btnFrame, text="우편 확인", command=self.checkMail).grid(row=1,column=0)        
+        Button(self.btnFrame, text="타겟 이동", command=self.moveToTarget).grid(row=1,column=1)
         
-        Button(self.frame, text="타겟 이동", command=self.moveToTarget).place(x=264,y=_y)
+        self.tReturnToVillSometimes = time.time()        
         
-        
-        _y += dy   
-        
-        self.tReturnToVillSometimes = time.time()
-        self.cbvReturnToVill = tkinter.IntVar()
-        self.cbReturnToVill = Checkbutton(self.frame,text="4시간 간격 복귀",variable=self.cbvReturnToVill)
-        self.cbReturnToVill.place(x=0,y=_y)
-        
-        _y += dy           
-        
-        self.cbvControlMode = tkinter.IntVar()
         self.cbControlMode = Checkbutton(self.frame,text="컨트롤 모드",variable=self.cbvControlMode)
-        self.cbControlMode.place(x=0,y=_y)
+        self.cbControlMode.pack()
         
-        _y += dy           
-        
-        self.btnPause = Button(self.frame, text="일시정지", command=lambda: self.setPause(True))
-        self.btnPause.place(x=4,y=_y)
+        self.btnFrame2 = tkinter.LabelFrame(self.frame, text="제어")
+        self.btnFrame2.pack(fill='both')
+        self.btnPause = Button(self.btnFrame2, text="일시정지", command=lambda: self.setPause(True))
+        self.btnPause.grid(row=0, column=0)
         self.btnPause["state"] =  'disabled'
         
-        self.btnResume = Button(self.frame, text="재기동", command=lambda: self.setPause(False))
-        self.btnResume.place(x=74,y=_y)
+        self.btnResume = Button(self.btnFrame2, text="재기동", command=lambda: self.setPause(False))
+        self.btnResume.grid(row=0, column=1)
         
-        _y += dy
-        
-        self.comboMapList = ttk.Combobox(self.frame, values=map_list, state="readonly")
+        self.comboMapList = ttk.Combobox(self.frame, values=self.app.map_list, state="readonly")
         self.comboMapList.current(0)
-        self.comboMapList.place(x=5,y=_y)        
-        
-    def isReturnToVillSometimes(self):
-        return self.cbvReturnToVill.get() == 1
+        self.comboMapList.pack()
     
     def setPause(self, isPause):
-        self.isPause = isPause
+        self.isPause = isPause        
         if isPause:
             self.btnPause["state"] = 'disabled'
-            self.btnResume["state"] = 'normal'                                    
+            self.btnResume["state"] = 'normal'     
             self.app.listProcessActivated.delete(self.app.listProcessActivated.get(0,"end").index(self.name))
             self.app.listProcess.insert(0, self.name)
         else:
@@ -250,13 +231,15 @@ class GameWndState:
         dy = y + h
         return self.img[y:dy,x:dx]
     
-    def update(self):
+    def update(self):        
         if self.reserveState != GWState.NONE:
             self.state = self.reserveState
             self.reserveState = GWState.NONE
             
         if self.isPaused():
-            return     
+            return   
+        
+        self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))  
         
         isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
@@ -320,7 +303,7 @@ class GameWndState:
         return self.isMatching(self.getImg(764,11,12,3), self.app._imgCheckSavePower) != True
     
     def useHealSelf(self):
-        if self.isControlMode() and self.isElf() and self.getMPPercent() >= 20 and self.getHPPercent() <= 80:
+        if self.isControlMode() and self.isElf() and self.getMPPercent() >= 15 and self.getHPPercent() <= 90:
             self.key_press(ord('2'))
             time.sleep(0.2)
             self.key_press(ord('2'))
@@ -349,12 +332,6 @@ class GameWndState:
         return self.cbvControlMode.get() == 1
             
     def processOnPowerSaveMode(self):
-        
-        # 4시간마다 충전
-        if self.isReturnToVillSometimes() and time.time() - self.tReturnToVillSometimes >= (60 * 60 * 4):
-            self.returnToVillage()
-            return
-        
         isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)        
         isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)        
         isDigit1 = self.isMatching(self.img[413:417,364:369], self.app._imgCheck1Digit)
@@ -445,11 +422,8 @@ class GameWndState:
             self.key_press(win32con.VK_ESCAPE)
             time.sleep(1)
         self.key_press(ord(self.app.tbShortcut.get().upper()))
-        if self.app.cbvNoHuntOnlyAlarm.get() == 1:
-            self.sendAlertMsgDelay('마을로 복귀 했습니다')
-            self.setState(GWState.NORMAL)
-        else:
-            self.setState(GWState.RETURN_TO_VILL)
+        self.setState(GWState.RETURN_TO_VILL)
+            
         
     def teleport(self):
         self.key_press(win32con.VK_ESCAPE)
@@ -735,3 +709,16 @@ class GameWndState:
                 break 
         _rate = 100 - (_findidx / _arr.size) * 100
         return _rate
+    
+    def setHuntMap(self, map):
+        self.comboMapList.set(map)
+        
+    def updateHPMP(self,hp,mp):
+        self.lbvHPMP.set(f"hp:{hp}%, mp:{mp}%")                        
+        img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(360,388,26,31), cv2.COLOR_BGR2RGB))
+        self.imgtk =  ImageTk.PhotoImage(image=img)
+        self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
+        
+        img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(26,85,114,17), cv2.COLOR_BGR2RGB))
+        self.imgtk2 =  ImageTk.PhotoImage(image=img)
+        self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)        

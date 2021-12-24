@@ -41,12 +41,12 @@ class ProcessController(object):
 
         win32gui.EnumWindows(enum_callback, toplist)
         _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
+        _wnds.sort(key=lambda d: d[1], reverse=True)
+        idx = 0
         for (_h, _t) in _wnds:
-            gw = GameWndState(_h, _t, self.app)
+            gw = GameWndState(_h, _t, self.app, idx)
             self.lineage_window_list.append(gw)            
-        
-        self.lineage_window_list.sort(key=lambda _gw: _gw.name, reverse=True)
-                
+            idx = idx + 1
     
     def findWnd(self):
         # 윈도우 리셋                
@@ -84,7 +84,8 @@ class ProcessController(object):
 
         win32gui.EnumWindows(enum_callback, toplist)
         _list_selected = []
-        _list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]        
+        _list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]  
+        _list.sort(key=lambda d: d[1], reverse=True)      
         for (_h,_t) in _list:
             for _idx  in self.app.listProcess.curselection():
                 _t_selected = self.app.listProcess.get(_idx)
@@ -120,12 +121,53 @@ class ProcessController(object):
             self.setForegroundWnd(lw_hwnd)    
             time.sleep(0.1)  
             
+    def changeMapSelected(self):
+        toplist = []
+        def enum_callback(hwnd, results):
+            results.append((hwnd, win32gui.GetWindowText(hwnd)))
+
+        win32gui.EnumWindows(enum_callback, toplist)
+        _list_selected = []
+        _list = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]        
+        for (_h,_t) in _list:
+            for _idx  in self.app.listProcess.curselection():
+                _t_selected = self.app.listProcess.get(_idx)
+                if _t == _t_selected: _list_selected.append(_t)
+                
+            for _idx  in self.app.listProcessActivated.curselection():
+                _t_selected = self.app.listProcessActivated.get(_idx)
+                if _t == _t_selected: _list_selected.append(_t)
+        
+        _list_selected.sort(key=lambda x:x[1])
+        for _gw in self.lineage_window_list:
+            lw_title = _gw.name                
+            
+            if np.size(np.where(np.array(_list_selected) == lw_title)) <= 0:                         
+                continue;
+            
+            _gw.setHuntMap(self.app.comboMapList.get())
+        pass
+            
     def getMailPresent(self):
         for gw in self.lineage_window_list:
             gw.reserveCheckMail()
         pass        
 
     def setForegroundWndByDoubleClick(self, event):
+        if len(self.app.listProcess.curselection()) > 1: return
+        
+        for i in self.app.listProcess.curselection():
+            _title = self.app.listProcess.get(i)
+            _finded = next((gw for gw in self.lineage_window_list if gw.name == _title), None)
+            if _finded is not None:
+                pass
+                
+        for i in self.app.listProcessActivated.curselection():
+            _title = self.app.listProcessActivated.get(i)
+            _finded = next((gw for gw in self.lineage_window_list if gw.name == _title), None)
+            if _finded is not None:
+                pass
+        """
         for i in self.app.listProcess.curselection():
             hwnd = win32gui.FindWindow(None, self.app.listProcess.get(i))
             self.setForegroundWnd(hwnd)
@@ -133,13 +175,14 @@ class ProcessController(object):
         for i in self.app.listProcessActivated.curselection():
             hwnd = win32gui.FindWindow(None, self.app.listProcessActivated.get(i))
             self.setForegroundWnd(hwnd)
+        """
 
     def setForegroundWnd(self, hwnd):
         shell.SendKeys('%')
         win32gui.SetForegroundWindow(hwnd)
 
     def onProcInThread(self, type=1):             
-        self.app.lbState.set("매크로 실행 중") 
+        #self.app.lbState.set("매크로 실행 중") 
         self.app.tConcourse = time.time()  
         
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
@@ -155,21 +198,7 @@ class ProcessController(object):
             _tStart = time.time()
             
             self.checkDeactivatedList()
-            _gw: GameWndState   
-            
-            # 사냥 시 일정 시간 간격으로 모으기
-            if self.app.checkConcourse.get() == 1 and (time.time() - self.app.tConcourse) >= 1200:
-                for _gw in self.lineage_window_list:
-                    try:
-                        activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
-                        if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
-                            continue;
-                        _gw.concourse()
-                    except Exception as e:
-                        print(f'{lw_title} 모으기 실패 -  {e}')
-                        logging.error(f'{lw_title} 모으기 실패 -  {e}')
-                self.app.tConcourse = time.time()
-                continue
+            _gw: GameWndState
             
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
@@ -234,7 +263,7 @@ class ProcessController(object):
 
     def stop(self):
         if self.thread is None: return
-        self.app.lbState.set("매크로 종료 중")
+        #self.app.lbState.set("매크로 종료 중")
 
         self.app.btnSortWnd3["state"] = "disabled"
         logging.debug('thread stopping...')
@@ -250,7 +279,7 @@ class ProcessController(object):
         self.app.tbNonAttackUI["state"] = 'normal'
         self.app.tbSlackTokenUI["state"] = 'normal'
         self.app.tbChannelUI["state"] = 'normal'
-        self.app.lbState.set("대기 중")    
+        #self.app.lbState.set("대기 중")    
 
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)
@@ -267,7 +296,7 @@ class ProcessController(object):
                 if _gw.name == _name: 
                     _gw.setPause(False)
 
-    def moveDeactivate(self):        
+    def moveDeactivate(self):
         wndNames = []
         for i in self.app.listProcessActivated.curselection():
             _name = self.app.listProcessActivated.get(i)
@@ -283,25 +312,23 @@ class ProcessController(object):
         wndNames = []
         for _name in self.app.listProcess.get(0, "end"):
             wndNames.append(_name)
-        
+            
         for _name in wndNames:
             for _gw in self.lineage_window_list:
                 if _gw.name == _name: 
                     _gw.destroyAll()
-                    
         
         wndNames = []
         for _name in self.app.listProcessActivated.get(0, "end"):
             wndNames.append(_name)
-
-        
+            
         for _name in wndNames:
             for _gw in self.lineage_window_list:
                 if _gw.name == _name: 
                     _gw.destroyAll()
                     
         self.app.listProcess.delete(0, END)
-        self.app.listProcessActivated.delete(0, END)
+        self.app.listProcessActivated.delete(0, END)        
         
     def tabChanged(self, *args):
         _name = self.app.notebook.tab(self.app.notebook.select(), "text")
