@@ -79,11 +79,11 @@ class GameWndState:
     def initUI(self):        
         row_cnt = 5
         self.frame = tkinter.LabelFrame(self.app.frame_detail, text=self.name)        
-        self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))
+        self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))        
         
-        self.uiCanvas = np.zeros((80,180,3), np.uint8)
+        self.uiCanvas = np.zeros((100,180,3), np.uint8)
         
-        self.canvas = tkinter.Canvas(self.frame,width=180,height=80)
+        self.canvas = tkinter.Canvas(self.frame,width=180,height=100)
         self.canvas.pack()
         
         self.lbvHPMP = tkinter.StringVar()
@@ -374,8 +374,7 @@ class GameWndState:
                 # 2-1. 마을 이라면 잡화 상점 프로세스부터 진행
                 self.setState(GWState.RETURN_TO_VILL)                
             else:
-                # 2-2. 아니라면 자동전투 진행
-                self.concourse()
+                self.sendAlertMsgDelay('사냥 중이 아닙니다. 게임을 확인 해 주세요.')
                 
     def processOnControlMode(self):
         if self.useHealSelf() == False:
@@ -726,12 +725,27 @@ class GameWndState:
     def updateHPMP(self,hp,mp):
         self.lbvHPMP.set(f"hp:{hp}%, mp:{mp}%")     
         if self.isControlMode():                               
-            img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(254,388,26,31), cv2.COLOR_BGR2RGB))
+            sx = 0
+            sy = 0
+            self.uiCanvas[sy:sy+46,sx:sx+57] = self.getImg(9,5,57,46) # 캐릭 및 레벨 사진
+            sx = 150
+            sy = 48
+            self.uiCanvas[sy:sy+31,sx:sx+26] = self.getImg(254,388,26,31) # 물약
+            sx = 58
+            sy = 3
+            self.uiCanvas[sy:sy+14,sx:sx+57] = self.getImg(121,5,57,14) # 방어수치
+            sx = 0
+            sy = 60
+            self.uiCanvas[sy:sy+17,sx:sx+114] = self.getImg(646,76,114,17) # 맵
+            sx = 58
+            sy = 20
+            self.uiCanvas[sy:sy+17,sx:sx+121] = self.getImg(290,4,121,17) # 다이아 아덴
+            sx = 58
+            sy = 40
+            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치
+            img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
             self.imgtk =  ImageTk.PhotoImage(image=img)
-            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
-            img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(646,76,114,17), cv2.COLOR_BGR2RGB))
-            self.imgtk2 =  ImageTk.PhotoImage(image=img)
-            #self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)    
+            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW) 
         else:                                
             sx = 0
             sy = 0
@@ -750,12 +764,14 @@ class GameWndState:
             self.uiCanvas[sy:sy+17,sx:sx+121] = self.getImg(290,4,121,17) # 다이아 아덴
             sx = 58
             sy = 40
-            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 다이아 아덴
+            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치
+            
+            sx = 0
+            sy = 79
+            _tempImg = self.getImg(20,170,184,36) # 득템            
+            self.uiCanvas[sy:sy+18,sx:sx+92] = cv2.resize(_tempImg, None, fx=0.5,fy=0.5 )
             img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
             self.imgtk =  ImageTk.PhotoImage(image=img)
-            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
-            #img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(26,85,114,17), cv2.COLOR_BGR2RGB))
-            #self.imgtk2 =  ImageTk.PhotoImage(image=img)
-            #self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)    
+            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)
         
             
