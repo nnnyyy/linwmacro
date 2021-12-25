@@ -77,7 +77,7 @@ class GameWndState:
             pass
     
     def initUI(self):        
-        row_cnt = 5
+        row_cnt = 4
         self.frame = tkinter.LabelFrame(self.app.frame_detail, text=self.name)        
         self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))        
         
@@ -235,6 +235,10 @@ class GameWndState:
         dx = x + w
         dy = y + h
         return self.uiCanvas[y:dy,x:dx]
+    
+    def updateUIOnly(self):
+        self.screenshot()
+        self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))  
     
     def update(self):        
         if self.reserveState != GWState.NONE:
@@ -764,12 +768,17 @@ class GameWndState:
             self.uiCanvas[sy:sy+17,sx:sx+121] = self.getImg(290,4,121,17) # 다이아 아덴
             sx = 58
             sy = 40
-            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치
+            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치            
             
             sx = 0
             sy = 79
             _tempImg = self.getImg(20,170,184,36) # 득템            
             self.uiCanvas[sy:sy+18,sx:sx+92] = cv2.resize(_tempImg, None, fx=0.5,fy=0.5 )
+            
+            sx = 92
+            sy = 82
+            self.uiCanvas[sy:sy+13,sx:sx+87] = self.getImg(92,66,87,13) # 잠수 시간
+            
             img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
             self.imgtk =  ImageTk.PhotoImage(image=img)
             self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)

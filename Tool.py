@@ -83,8 +83,10 @@ class ToolDlg( tkinter.Tk ):
         pass
         
     def initialize(self):
+        self.toolWidth = 800
+        self.toolHeight = 690
         self.title("MogulMogul v1.1")
-        self.geometry("1024x768+100+100")
+        self.geometry(f"{self.toolWidth}x{self.toolHeight}+100+100")
         self.resizable(False, False)
            
         self.tbShortcut = tkinter.StringVar()
@@ -107,7 +109,7 @@ class ToolDlg( tkinter.Tk ):
         dy = 36
         
         # 공통 설정 페이지
-        self.notebook = tkinter.ttk.Notebook(self, width=1004, height=718)
+        self.notebook = tkinter.ttk.Notebook(self, width=self.toolWidth-20, height=self.toolHeight-50)
         self.notebook.place(x=10,y=_y)
         
         menubar=tkinter.Menu(self)
@@ -127,10 +129,8 @@ class ToolDlg( tkinter.Tk ):
         menu_2.add_command(label="바둑판 정렬(선택된 것만)", command=self.controller.arragngeWndSelected)        
         
         frame1 = tkinter.Frame(self)
-        self.notebook.add(frame1, text="공통")        
-        
-        
-        
+        self.notebook.add(frame1, text="모니터링")
+         
         Label(frame1, text="프로세스 목록", width=16, height=1, padx=1, pady=2, anchor="w").place(x=400,y=_y)
         self.listProcess = tkinter.Listbox(frame1, selectmode='extended')        
         self.listProcess.bind('<<ListboxSelect>>', self.controller.setForegroundWndByDoubleClick)

@@ -3,6 +3,7 @@ import pyautogui
 import win32gui
 import win32con
 import win32api
+import win32process
 from ctypes import windll
 import time
 import numpy as np
@@ -49,13 +50,18 @@ class ProcessController(object):
             idx = idx + 1
     
     def findWnd(self):
-        # 윈도우 리셋                
+        # 윈도우 리셋    
+        _temp = self.app.listProcessActivated.get(0, END)
         self.destroyWnds();        
         self.refreshWnds()        
-
-        cnt = 0
-        for _gw in self.lineage_window_list:
-            self.app.listProcess.insert(cnt, _gw.name)
+        
+        print(_temp)
+        cnt = 0        
+        for _gw in self.lineage_window_list:       
+            if _gw.name not in _temp:     
+                self.app.listProcess.insert(cnt, _gw.name)
+            else:
+                self.app.listProcessActivated.insert(cnt, _gw.name)
             cnt += 1
 
     def arragngeWnd(self, type):
@@ -193,9 +199,9 @@ class ProcessController(object):
         import os
         
         while not self.stop_threads.is_set():   
-            # memory_usage_dict = dict(psutil.virtual_memory()._asdict())
-            # memory_usage_percent = memory_usage_dict['percent']
-            # print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
+            memory_usage_dict = dict(psutil.virtual_memory()._asdict())
+            memory_usage_percent = memory_usage_dict['percent']
+            #print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
             _tStart = time.time()
             
             self.checkDeactivatedList()
@@ -205,17 +211,23 @@ class ProcessController(object):
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
                 try:         
-                    # pid = ctypes.windll.kernel32.GetProcessId(lw_hwnd)
-                    # current_process = psutil.Process(pid)
-                    # current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20
-                    # print(f"BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    TId, pid = win32process.GetWindowThreadProcessId(lw_hwnd)
+                    current_process = psutil.Process(pid)
+                    current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20
+                    #print(f"{pid} : {lw_title} BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
+                    
+                    if memory_usage_percent >= 90 and current_process_memory_usage_as_KB >= 1800:                        
+                        win32process.TerminateProcess(lw_hwnd, -1)
+                        win32api.CloseHandle(lw_hwnd)
+                        self.app.post_message(f'{lw_title} : 메모리 부족 및 과사용으로 프로세스 종료 : {memory_usage_percent}%, {current_process_memory_usage_as_KB}KB')
+                        continue
                     
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
-                    if np.size(np.where(activatedWndList == lw_title)) <= 0:                         
+                    if np.size(np.where(activatedWndList == lw_title)) <= 0:
+                        _gw.updateUIOnly()
                         continue;
                     
-                    
-                    win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
                     if _gw.screenshot() == False:
                         logging.error(f'{_gw} screenshot failed..')                        
                         continue 
