@@ -53,15 +53,25 @@ class ProcessController(object):
         # 윈도우 리셋    
         _temp = self.app.listProcessActivated.get(0, END)
         self.destroyWnds();        
-        self.refreshWnds()        
+        self.refreshWnds()
         
-        print(_temp)
         cnt = 0        
         for _gw in self.lineage_window_list:       
             if _gw.name not in _temp:     
                 self.app.listProcess.insert(cnt, _gw.name)
             else:
                 self.app.listProcessActivated.insert(cnt, _gw.name)
+            cnt += 1
+            
+    def resetWnd(self):
+        # 윈도우 리셋    
+        _temp = self.app.listProcessActivated.get(0, END)
+        self.destroyWnds();        
+        self.refreshWnds()
+        
+        cnt = 0        
+        for _gw in self.lineage_window_list:       
+            self.app.listProcess.insert(cnt, _gw.name)            
             cnt += 1
 
     def arragngeWnd(self, type):
@@ -213,20 +223,25 @@ class ProcessController(object):
                 try:         
                     TId, pid = win32process.GetWindowThreadProcessId(lw_hwnd)
                     current_process = psutil.Process(pid)
-                    current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20
-                    #print(f"{pid} : {lw_title} BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20                    
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
-                    
-                    if memory_usage_percent >= 90 and current_process_memory_usage_as_KB >= 1800:                        
-                        win32process.TerminateProcess(lw_hwnd, -1)
-                        win32api.CloseHandle(lw_hwnd)
-                        self.app.post_message(f'{lw_title} : 메모리 부족 및 과사용으로 프로세스 종료 : {memory_usage_percent}%, {current_process_memory_usage_as_KB}KB')
-                        continue
                     
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:
                         _gw.updateUIOnly()
                         continue;
+                    
+                    # print(f"{pid} : {lw_title} BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
+                    if memory_usage_percent >= 90 and current_process_memory_usage_as_KB >= 2500:
+                        self.app.post_message(f'{lw_title}, {lw_hwnd} : 메모리 부족 및 과사용으로 프로세스 종료 : {memory_usage_percent}%, {current_process_memory_usage_as_KB}KB')
+                        parent = psutil.Process(pid)                        
+                        for child in parent.children(recursive=True): #자식-부모 종료                             
+                            child.kill()
+                        
+                        parent.kill()
+                        time.sleep(1)
+                        self.resetWnd()
+                        break
                     
                     if _gw.screenshot() == False:
                         logging.error(f'{_gw} screenshot failed..')                        
@@ -242,7 +257,7 @@ class ProcessController(object):
                     logging.error(f'{lw_title} -  {e}')
                     self.app.post_message(f'{lw_title} : {e}')
                     # 활성화 윈도우 초기화
-                    self.findWnd()
+                    self.resetWnd()
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0

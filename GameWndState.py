@@ -64,8 +64,15 @@ class GameWndState:
     def __str__(self):
         return f'{self.name} : {self.hwnd}'
     
-    def destroyAll(self):
-        self.frame.forget()
+    def destroyAll(self):      
+        # destroy all widgets from frame
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        
+        # this will clear frame and frame will be empty
+        # if you want to hide the empty panel then        
+        self.frame.pack_forget()
+        self.frame.grid_forget()
         
     def reloadSetting(self):
         name_split = self.name.split()
