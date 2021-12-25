@@ -81,11 +81,10 @@ class GameWndState:
         self.frame = tkinter.LabelFrame(self.app.frame_detail, text=self.name)        
         self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))
         
-        self.canvas = tkinter.Canvas(self.frame,width=26,height=31)
-        self.canvas.pack()    
+        self.uiCanvas = np.zeros((80,180,3), np.uint8)
         
-        self.canvas2 = tkinter.Canvas(self.frame,width=114,height=17)
-        self.canvas2.pack()                
+        self.canvas = tkinter.Canvas(self.frame,width=180,height=80)
+        self.canvas.pack()
         
         self.lbvHPMP = tkinter.StringVar()
         self.lbvHPMP.set("")
@@ -113,6 +112,7 @@ class GameWndState:
         self.btnResume.grid(row=0, column=1)
         
         self.comboMapList = ttk.Combobox(self.frame, values=self.app.map_list, state="readonly")
+        self.comboMapList.bind("<<ComboboxSelected>>", self.changeHuntMap)
         self.comboMapList.current(0)
         self.comboMapList.pack()
     
@@ -230,6 +230,11 @@ class GameWndState:
         dx = x + w
         dy = y + h
         return self.img[y:dy,x:dx]
+    
+    def getUICanvas(self,x,y,w,h):
+        dx = x + w
+        dy = y + h
+        return self.uiCanvas[y:dy,x:dx]
     
     def update(self):        
         if self.reserveState != GWState.NONE:
@@ -713,12 +718,44 @@ class GameWndState:
     def setHuntMap(self, map):
         self.comboMapList.set(map)
         
-    def updateHPMP(self,hp,mp):
-        self.lbvHPMP.set(f"hp:{hp}%, mp:{mp}%")                        
-        img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(360,388,26,31), cv2.COLOR_BGR2RGB))
-        self.imgtk =  ImageTk.PhotoImage(image=img)
-        self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
+    def changeHuntMap(self,event):
+        self.setting["hunt_map"] = self.comboMapList.get()
+        self.app.saveSetting()
+        pass
         
-        img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(26,85,114,17), cv2.COLOR_BGR2RGB))
-        self.imgtk2 =  ImageTk.PhotoImage(image=img)
-        self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)        
+    def updateHPMP(self,hp,mp):
+        self.lbvHPMP.set(f"hp:{hp}%, mp:{mp}%")     
+        if self.isControlMode():                               
+            img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(254,388,26,31), cv2.COLOR_BGR2RGB))
+            self.imgtk =  ImageTk.PhotoImage(image=img)
+            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
+            img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(646,76,114,17), cv2.COLOR_BGR2RGB))
+            self.imgtk2 =  ImageTk.PhotoImage(image=img)
+            #self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)    
+        else:                                
+            sx = 0
+            sy = 0
+            self.uiCanvas[sy:sy+46,sx:sx+57] = self.getImg(9,5,57,46) # 캐릭 및 레벨 사진
+            sx = 150
+            sy = 48
+            self.uiCanvas[sy:sy+31,sx:sx+26] = self.getImg(360,388,26,31) # 물약
+            sx = 58
+            sy = 3
+            self.uiCanvas[sy:sy+14,sx:sx+57] = self.getImg(121,5,57,14) # 방어수치
+            sx = 0
+            sy = 60
+            self.uiCanvas[sy:sy+17,sx:sx+114] = self.getImg(26,85,114,17) # 맵
+            sx = 58
+            sy = 20
+            self.uiCanvas[sy:sy+17,sx:sx+121] = self.getImg(290,4,121,17) # 다이아 아덴
+            sx = 58
+            sy = 40
+            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 다이아 아덴
+            img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
+            self.imgtk =  ImageTk.PhotoImage(image=img)
+            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)        
+            #img = PIL.Image.fromarray(cv2.cvtColor(self.getImg(26,85,114,17), cv2.COLOR_BGR2RGB))
+            #self.imgtk2 =  ImageTk.PhotoImage(image=img)
+            #self.canvas2.create_image(0,0,image=self.imgtk2,anchor=tkinter.NW)    
+        
+            

@@ -58,7 +58,7 @@ class ProcessController(object):
             self.app.listProcess.insert(cnt, _gw.name)
             cnt += 1
 
-    def arragngeWnd(self):
+    def arragngeWnd(self, type):
 
         screen_width = win32api.GetSystemMetrics(0)
         screen_height = win32api.GetSystemMetrics(1)
@@ -72,8 +72,9 @@ class ProcessController(object):
 
         for _gw in self.lineage_window_list:              
             win32gui.MoveWindow(_gw.hwnd, x, y, game_width, game_height, True)             
-            x += 100
-            y += 50  
+            if type == 1:
+                x += 100
+                y += 50  
             self.setForegroundWnd(_gw.hwnd)    
             time.sleep(0.1) 
             

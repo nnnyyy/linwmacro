@@ -78,6 +78,8 @@ class ToolDlg( tkinter.Tk ):
             gw.reloadSetting()
             
     def saveSetting(self):        
+        with open('./setting.json','w+', encoding='UTF8') as outfile:            
+            json.dump(self.settings, outfile, indent=4, ensure_ascii=False)
         pass
         
     def initialize(self):
@@ -120,7 +122,8 @@ class ToolDlg( tkinter.Tk ):
         menu_2=tkinter.Menu(menubar, tearoff=0, selectcolor="red")
         menubar.add_cascade(label="윈도우", menu=menu_2)
         menu_2.add_command(label="새로고침", command=self.controller.findWnd)
-        menu_2.add_command(label="계단식 정렬", command=self.controller.arragngeWnd)        
+        menu_2.add_command(label="뭉치기", command=lambda: self.controller.arragngeWnd(0)) 
+        menu_2.add_command(label="계단식 정렬", command=lambda: self.controller.arragngeWnd(1))        
         menu_2.add_command(label="바둑판 정렬(선택된 것만)", command=self.controller.arragngeWndSelected)        
         
         frame1 = tkinter.Frame(self)
