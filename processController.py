@@ -228,11 +228,12 @@ class ProcessController(object):
                     
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:
-                        _gw.updateUIOnly()
+                        if memory_usage_percent < 80:
+                            _gw.updateUIOnly()
                         continue;
                     
                     # print(f"{pid} : {lw_title} BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
-                    if memory_usage_percent >= 90 and current_process_memory_usage_as_KB >= 2500:
+                    if (memory_usage_percent >= 80 and current_process_memory_usage_as_KB >= 2500) or current_process_memory_usage_as_KB >= 5000:
                         self.app.post_message(f'{lw_title}, {lw_hwnd} : 메모리 부족 및 과사용으로 프로세스 종료 : {memory_usage_percent}%, {current_process_memory_usage_as_KB}KB')
                         parent = psutil.Process(pid)                        
                         for child in parent.children(recursive=True): #자식-부모 종료                             

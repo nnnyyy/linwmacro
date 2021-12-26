@@ -358,6 +358,7 @@ class GameWndState:
             if self.sendAttackedAlertMsgDelay('공격 받고 있습니다!'):
                 self.teleport()               
                 self.uploadFile()
+                return
 
         isNoAttackByWeight = False
         isNoAttackByWeight = self.isMatching(self.img[420:430,410:445], self.app._imgCheckNoAttackByWeight)                        
@@ -388,6 +389,7 @@ class GameWndState:
                 self.setState(GWState.RETURN_TO_VILL)                
             else:
                 self.sendAlertMsgDelay('사냥 중이 아닙니다. 게임을 확인 해 주세요.')
+                self.screenshot()
                 self.returnToVillage()
                 
     def processOnControlMode(self):
