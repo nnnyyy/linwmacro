@@ -66,12 +66,14 @@ class GameWndState:
     
     def destroyAll(self):      
         # destroy all widgets from frame
+        """
         for widget in self.frame.winfo_children():
             widget.destroy()
+        """
         
         # this will clear frame and frame will be empty
         # if you want to hide the empty panel then        
-        self.frame.pack_forget()
+        # self.frame.pack_forget()
         self.frame.grid_forget()
         
     def reloadSetting(self):
@@ -386,6 +388,7 @@ class GameWndState:
                 self.setState(GWState.RETURN_TO_VILL)                
             else:
                 self.sendAlertMsgDelay('사냥 중이 아닙니다. 게임을 확인 해 주세요.')
+                self.returnToVillage()
                 
     def processOnControlMode(self):
         if self.useHealSelf() == False:

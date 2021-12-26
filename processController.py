@@ -256,8 +256,8 @@ class ProcessController(object):
                     print(f'{lw_title} -  {e}')
                     logging.error(f'{lw_title} -  {e}')
                     self.app.post_message(f'{lw_title} : {e}')
-                    # 활성화 윈도우 초기화
-                    self.resetWnd()
+                    _gw.setPause(True)
+                    break
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0
