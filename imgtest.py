@@ -25,8 +25,8 @@ import pytesseract
 range = 901
 val = 13
 
-img = cv2.imread('./test_str.png', cv2.IMREAD_GRAYSCALE)
-dst = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C | cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 301, 200)
+imgCheckHoldMove = cv2.imread('./image/checkHoldMove.png', cv2.IMREAD_COLOR)
+
 """
 img2_cut = dst[862:862+mh, 851:851+mw]
 img2_cut = cv2.bitwise_not(img2_cut)
@@ -84,34 +84,12 @@ for (_h, _t) in _wnds:
     win32gui.ReleaseDC(_h, hwndDC)
     
     img = cv2.cvtColor(np.array(im),  cv2.COLOR_RGB2BGR)
-    img_hp = img[35:36,68:218]
-    img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
-    ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
-    _arr = dst[0][::-1]
-    _arr2 = np.where(_arr == 255)[0]
-    _temp = -1
-    _cnt = 0
-    _findidx = _arr.size
-    for x in _arr2:
-        if _temp == -1:             
-            _cnt = _cnt + 1
-        elif (x - _temp) > 2:
-            _cnt = 1            
-        elif (x - _temp) <= 1:
-            _cnt = _cnt + 1   
-                     
-        _temp = x
-        
-        if _cnt >= 7:
-            _findidx = x - 6
-            break
+    dst = cv2.inRange(img[306:306+18,698:698+19], (50,70,140), (90,120,255))        
+    _arr2 = np.where(dst == 255)[0]      
+    print(_arr2.size > 0)
     
-    _rate = 100 - (_findidx / _arr.size) * 100
-    print(_arr.size, _findidx, _rate)        
-    
-    cv2.imshow(_t, img)
-    cv2.imshow('hp', img_hp)    
-    cv2.imshow('dst', dst)
+    cv2.imshow('img', img)   
+    cv2.imshow('dst', dst)     
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     

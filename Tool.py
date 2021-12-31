@@ -21,6 +21,7 @@ class ToolDlg( tkinter.Tk ):
             '죽음의 폐허',
             '포도밭',
             '정화의 대지',
+            '뒤틀린 땅',
             '밀밭',
             '네루가 오크 부락',
             '아투바 오크 부락',
@@ -35,6 +36,21 @@ class ToolDlg( tkinter.Tk ):
             '요정 숲 던전 2층',
             '요정 숲 던전 3층',
             '황무지',
+            '개미굴 입구 1구역',
+            '개미굴 입구 2구역',
+            '개미굴 입구 3구역',
+            '개미굴 입구 4구역',
+            '개미굴 입구 5구역',
+            '개미굴 입구 6구역',
+            '개미굴 1층 1구역',
+            '개미굴 1층 2구역',
+            '개미굴 1층 3구역',
+            '개미굴 1층 4구역',
+            '개미굴 1층 5구역',
+            '개미굴 1층 6구역',
+            '개미굴 2층 1구역',
+            '개미굴 2층 2구역',
+            '개미굴 2층 3구역',
         ]
         
         # json 옵션 파일 사용 예정
@@ -67,6 +83,8 @@ class ToolDlg( tkinter.Tk ):
         self._imgFavorateBtn2 = cv2.imread('./image/favorateBtn2.png', cv2.IMREAD_COLOR)
         self._imgMapHamberger = cv2.imread('./image/map_hamberger.png', cv2.IMREAD_COLOR)
         self._imgMapSearch = cv2.imread('./image/map_search.png', cv2.IMREAD_COLOR)       
+        self._imgCheckHoldMove = cv2.imread('./image/checkHoldMove.png', cv2.IMREAD_COLOR)       
+        self._imgGrayNotAttack = cv2.imread('./image/notattack.png', cv2.IMREAD_GRAYSCALE)
         
        
         
@@ -84,7 +102,7 @@ class ToolDlg( tkinter.Tk ):
         
     def initialize(self):
         self.toolWidth = 800
-        self.toolHeight = 690
+        self.toolHeight = 800
         self.title("MogulMogul v1.1")
         self.geometry(f"{self.toolWidth}x{self.toolHeight}+100+100")
         self.resizable(False, False)
@@ -123,7 +141,7 @@ class ToolDlg( tkinter.Tk ):
         
         menu_2=tkinter.Menu(menubar, tearoff=0, selectcolor="red")
         menubar.add_cascade(label="윈도우", menu=menu_2)
-        menu_2.add_command(label="새로고침", command=self.controller.findWnd)
+        menu_2.add_command(label="새로고침", command=self.controller.refreshWnd)
         menu_2.add_command(label="뭉치기", command=lambda: self.controller.arragngeWnd(0)) 
         menu_2.add_command(label="계단식 정렬", command=lambda: self.controller.arragngeWnd(1))        
         menu_2.add_command(label="바둑판 정렬(선택된 것만)", command=self.controller.arragngeWndSelected)        

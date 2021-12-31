@@ -47,6 +47,8 @@ class GameWndState:
         self.tAutoHuntStart = time.time()
         self.tNoneAutoAttackAlertTime = 0
         self.tAttackedAlertMsg = 0
+        self.tAttackingStart = 0
+        self.tHoldCancel = 0
         self.app = app
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         self.setState(GWState.NORMAL)        
@@ -90,14 +92,14 @@ class GameWndState:
         self.frame = tkinter.LabelFrame(self.app.frame_detail, text=self.name)        
         self.frame.grid(column=self.idx % row_cnt, row=int(self.idx / row_cnt))        
         
-        self.uiCanvas = np.zeros((100,180,3), np.uint8)
+        self.uiCanvas = np.zeros((140,180,3), np.uint8)
         
-        self.canvas = tkinter.Canvas(self.frame,width=180,height=100)
-        self.canvas.pack()
+        self.canvas = tkinter.Canvas(self.frame,width=180,height=140)
+        self.canvas.pack()        
         
-        self.lbvHPMP = tkinter.StringVar()
-        self.lbvHPMP.set("")
-        tkinter.Label(self.frame, textvariable=self.lbvHPMP).pack(pady=1)
+        self.lbvStatus = tkinter.StringVar()
+        self.lbvStatus.set("")
+        tkinter.Label(self.frame, textvariable=self.lbvStatus).pack(pady=1)        
         
         self.btnFrame = tkinter.LabelFrame(self.frame, text="액션 버튼")
         self.btnFrame.pack(fill='both')
@@ -108,7 +110,7 @@ class GameWndState:
         
         self.tReturnToVillSometimes = time.time()        
         
-        self.cbControlMode = Checkbutton(self.frame,text="컨트롤 모드",variable=self.cbvControlMode)
+        self.cbControlMode = Checkbutton(self.frame,text="컨트롤 모드",variable=self.cbvControlMode, command=self.changeControlMode)
         self.cbControlMode.pack()
         
         self.btnFrame2 = tkinter.LabelFrame(self.frame, text="제어")
@@ -126,7 +128,9 @@ class GameWndState:
         self.comboMapList.pack()
     
     def setPause(self, isPause):
-        self.isPause = isPause        
+        self.isPause = isPause
+        self.tAutoHuntStart = time.time()
+        self.resetState()
         if isPause:
             self.btnPause["state"] = 'disabled'
             self.btnResume["state"] = 'normal'     
@@ -179,7 +183,6 @@ class GameWndState:
         if _state == GWState.GO_HUNT:
             self.goHuntCntEnd = 0
 
-        s = self.getStateStr(_state)
         self.tReturnToVillSometimes = time.time()
             
     def getStateStr(self, _state:GWState) :
@@ -187,9 +190,12 @@ class GameWndState:
         elif( _state == GWState.RETURN_TO_VILL ): return '마을귀환'
         elif( _state == GWState.GO_BUY_POSION ): return '물약구입'
         elif( _state == GWState.GO_HUNT ): return '사냥하러'
-        elif( _state == GWState.GO_HUNT_BY_FAVORATE ): return '사냥하러(텔)'        
+        elif( _state == GWState.GO_HUNT_BY_FAVORATE ): return '사냥하러(텔)'
+        elif( _state == GWState.GO_HUNT_BY_TARGET ): return '사냥하러(타겟)'
+        elif( _state == GWState.MOVE_TO_TARGET ): return '타겟이동중'
+        elif( _state == GWState.CHECK_MAIL ): return '우편확인중'        
         
-        return '-'
+        return f'{_state}'
         
     """
     스크린샷 - Minimize나 화면 잠금 상태가 아니면 스크린샷을 찍는다        
@@ -258,6 +264,9 @@ class GameWndState:
             return   
         
         self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))  
+        
+        if self.app.controller.actionLock != -1 and self.app.controller.actionLock != self.hwnd:
+            return
         
         isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
         if isPowerSaveMenu == True:
@@ -330,9 +339,13 @@ class GameWndState:
         return False
     
     def useBloodToSoul(self):
-        if self.isControlMode() and self.isElf() and self.getMPPercent() < 30 and self.getHPPercent() >= 60:
-            self.key_press(ord('3'))
-            time.sleep(0.2)
+        if self.isControlMode() and self.isElf():
+            if (
+                (self.isAttacking() and self.getMPPercent() < 10 and self.getHPPercent() >= 80) 
+                or (self.isAttacking() == False and self.getHPPercent() >= 60)
+            ):
+                self.key_press(ord('3'))
+                time.sleep(0.2)
             return True
         else: return False
         
@@ -348,9 +361,12 @@ class GameWndState:
         
     def isControlMode(self):
         return self.cbvControlMode.get() == 1
+    
+    def isAutoAttacking(self):
+        return self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
             
-    def processOnPowerSaveMode(self):
-        isAutoAttacking = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)        
+    def processOnPowerSaveMode(self):        
+        isAutoAttacking = self.isAutoAttacking()
         isAttacked = self.isMatching(self.img[290:329,324:477], self.app._imgCheckAttacked)        
         isDigit1 = self.isMatching(self.img[413:417,364:369], self.app._imgCheck1Digit)
 
@@ -395,7 +411,28 @@ class GameWndState:
     def processOnControlMode(self):
         if self.useHealSelf() == False:
             if self.useBloodToSoul() == False:
-                self.useTripleShot()        
+                self.useTripleShot()
+                
+        # 고정 사격 테스트
+        if self.checkHoldMove() == False and time.time() - self.tHoldCancel >= 2:
+            self.key_press(ord('H'))
+            return
+            
+        # 고정 되었다
+        if self.isAttacking() == False:      
+            self.tAttackingStart = time.time()
+            self.key_press(win32con.VK_SPACE)
+            return
+            
+        # 5초 이상 공격 상태 지속이면 타겟을 바꿔준다 
+        if self.tAttackingStart != 0 and (time.time() - self.tAttackingStart >= 5):
+            self.tAttackingStart = time.time()
+            self.key_press(win32con.VK_TAB)
+        
+        # 살짝 이동
+        if time.time() - self.tHoldCancel >= 15:
+            self.tHoldCancel = time.time()
+            self.key_press(ord('H'))
             
     def sendAlertMsgDelay(self, msg):
         tNonAttackTerm = int(self.app.tbNonAttack.get())
@@ -483,6 +520,7 @@ class GameWndState:
                 self.click(pos[0] + 5,pos[1] + 5)
                 logging.debug(f'{self} - 잡화상점으로 이동합니다')
                 self.setState(GWState.GO_BUY_POSION)
+                self.app.controller.actionLock = self.hwnd
             else:
                 # 일단 다른 캐릭에게 처리 양보
                 self.click(224,302)
@@ -509,16 +547,18 @@ class GameWndState:
             else:
                 self.goTarget()
                 self.setState(GWState.GO_HUNT_BY_TARGET)
+            
+            self.app.controller.actionLock = -1
             return True
         else:
-            if (time.time() - self.tAction) >= 100:
+            if (time.time() - self.tAction) >= 60:
                 logging.debug(f'{self} - 상점 이동 실패')
                 self.setState(GWState.RETURN_TO_VILL)
+                self.app.controller.actionLock = -1
                 return False
             
+            # 아직 이동 중
             return True
-        
-        return True
     
     def goPyosik(self):        
         self.key_press(ord('M'))
@@ -737,9 +777,20 @@ class GameWndState:
         self.setting["hunt_map"] = self.comboMapList.get()
         self.app.saveSetting()
         pass
+    
+    def isAttacking(self):              
+        dst = cv2.inRange(self.img[306:306+18,698:698+19], (50,70,140), (90,120,255))        
+        _arr2 = np.where(dst == 255)[0]      
+        return _arr2.size > 0
         
-    def updateHPMP(self,hp,mp):
-        self.lbvHPMP.set(f"hp:{hp}%, mp:{mp}%")     
+    def updateHPMP(self,hp,mp):        
+        _tAutoHunt = int(time.time() - self.tAutoHuntStart)
+        _tAutoHuntMin = int(_tAutoHunt / 60)
+        _tAutoHuntHour = int(_tAutoHuntMin / 60)        
+        _tTotal = ''
+        if _tAutoHuntHour > 0: _tTotal = f"{_tAutoHuntHour}시간 {int(_tAutoHuntMin % 60)}분"
+        else: _tTotal = f"{_tAutoHuntMin}분"
+        self.lbvStatus.set(f"state:{self.getStateStr(self.state)}\n {_tTotal}")     
         if self.isControlMode():                               
             sx = 0
             sy = 0
@@ -780,7 +831,7 @@ class GameWndState:
             self.uiCanvas[sy:sy+17,sx:sx+121] = self.getImg(290,4,121,17) # 다이아 아덴
             sx = 58
             sy = 40
-            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치            
+            self.uiCanvas[sy:sy+14,sx:sx+74] = self.getImg(22,430,74,14) # 경험치          
             
             sx = 0
             sy = 79
@@ -791,8 +842,35 @@ class GameWndState:
             sy = 82
             self.uiCanvas[sy:sy+13,sx:sx+87] = self.getImg(92,66,87,13) # 잠수 시간
             
+            sx = 0
+            sy = 99
+            self.uiCanvas[sy:sy+12,sx:sx+85] = self.getImg(20,108,85,12) # 경험치 
+            
+            sx = 102
+            sy = 99
+            self.uiCanvas[sy:sy+11,sx:sx+74] = self.getImg(26,129,74,11) # 경험치 
+            
+            _hp = np.zeros((7,180,3), np.uint8)            
+            _mp = np.zeros((7,180,3), np.uint8)
+            
+            cv2.rectangle(_hp, (0,0),(int(hp / 100 * 180) - 1,12), (36,56,160), -1)
+            cv2.rectangle(_mp, (0,0),(int(mp / 100 * 180) - 1,12), (180,161,102), -1)
+            
+            sx = 0
+            sy = 113
+            self.uiCanvas[sy:sy+7,sx:sx+180] = _hp
+            sx = 0
+            sy = 120
+            self.uiCanvas[sy:sy+7,sx:sx+180] = _mp
+            
             img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
             self.imgtk =  ImageTk.PhotoImage(image=img)
             self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW)
         
-            
+    def checkHoldMove(self):
+        # 4,344,25,25        
+        return self.isMatching(self.img[344:344+25,4:4+25], self.app._imgCheckHoldMove, 0.85)        
+    
+    def changeControlMode(self):
+        if self.cbvControlMode.get() == 0:
+            self.key_press(0xBD)

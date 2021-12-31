@@ -26,7 +26,8 @@ class ProcessController(object):
         self.lineage_window_list = [] 
         self.slackClient = None        
         self.app = app        
-        self.tCheckActivate = time.time()        
+        self.tCheckActivate = time.time()           
+        self.actionLock = -1
         
         logging.debug(f'컨트롤러 생성')
         
@@ -34,7 +35,7 @@ class ProcessController(object):
         #self.app.notebook.bind('<<NotebookTabChanged>>', self.tabChanged)
         pass
     
-    def refreshWnds(self):
+    def registerWnds(self):
         toplist = []
         self.lineage_window_list = []
         def enum_callback(hwnd, results):
@@ -48,26 +49,27 @@ class ProcessController(object):
             gw = GameWndState(_h, _t, self.app, idx)
             self.lineage_window_list.append(gw)            
             idx = idx + 1
+            
+    def refreshWnd(self):
+        self.stop()
+        self.findWnd()
+        pass
     
     def findWnd(self):
-        # 윈도우 리셋    
-        _temp = self.app.listProcessActivated.get(0, END)
+        # 윈도우 리셋            
         self.destroyWnds();        
-        self.refreshWnds()
+        self.registerWnds()
         
         cnt = 0        
         for _gw in self.lineage_window_list:       
-            if _gw.name not in _temp:     
-                self.app.listProcess.insert(cnt, _gw.name)
-            else:
-                self.app.listProcessActivated.insert(cnt, _gw.name)
+            self.app.listProcess.insert(cnt, _gw.name)                
             cnt += 1
             
     def resetWnd(self):
         # 윈도우 리셋    
         _temp = self.app.listProcessActivated.get(0, END)
         self.destroyWnds();        
-        self.refreshWnds()
+        self.registerWnds()
         
         cnt = 0        
         for _gw in self.lineage_window_list:       
@@ -208,11 +210,28 @@ class ProcessController(object):
         import psutil
         import os
         
-        while not self.stop_threads.is_set():   
+        while not self.stop_threads.is_set():               
+            cpu = psutil.cpu_percent()
             memory_usage_dict = dict(psutil.virtual_memory()._asdict())
             memory_usage_percent = memory_usage_dict['percent']
             #print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
             _tStart = time.time()
+            
+            if cpu >= 100:
+                # UI 상태 초기화
+                """
+                self.app.btnSortWnd3["state"] = "disabled"
+                self.app.btnSortWnd1["state"] = 'normal'     
+                self.app.tbShortcutUI["state"] = 'normal'
+                self.app.tbLoopTermUI["state"] = 'normal'
+                self.app.tbNonAttackUI["state"] = 'normal'
+                self.app.tbSlackTokenUI["state"] = 'normal'
+                self.app.tbChannelUI["state"] = 'normal'
+                #self.app.lbState.set("대기 중")         
+                self.stop_threads.set()
+                self.app.post_message(f'cpu: {cpu}%, mem : {memory_usage_percent}% - 매크로 종료')
+                """
+                continue
             
             self.checkDeactivatedList()
             _gw: GameWndState
@@ -220,7 +239,7 @@ class ProcessController(object):
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
-                try:         
+                try:                             
                     TId, pid = win32process.GetWindowThreadProcessId(lw_hwnd)
                     current_process = psutil.Process(pid)
                     current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20                    
@@ -262,7 +281,7 @@ class ProcessController(object):
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0
-            time.sleep(_gap)       
+            time.sleep(_gap)  
             
     def checkDeactivatedList(self):
         if time.time() - self.tCheckActivate >= 60 * 5:
@@ -292,23 +311,22 @@ class ProcessController(object):
 
     def stop(self):
         if self.thread is None: return
-        #self.app.lbState.set("매크로 종료 중")
 
-        self.app.btnSortWnd3["state"] = "disabled"
         logging.debug('thread stopping...')
         self.stop_threads.set()
         self.thread.join()
         self.thread = None
-        logging.debug('thread stopped')
-
+        logging.debug('thread stopped')        
+        
         # UI 상태 초기화
+        self.app.btnSortWnd3["state"] = "disabled"
         self.app.btnSortWnd1["state"] = 'normal'     
         self.app.tbShortcutUI["state"] = 'normal'
         self.app.tbLoopTermUI["state"] = 'normal'
         self.app.tbNonAttackUI["state"] = 'normal'
         self.app.tbSlackTokenUI["state"] = 'normal'
         self.app.tbChannelUI["state"] = 'normal'
-        #self.app.lbState.set("대기 중")    
+        #self.app.lbState.set("대기 중")         
 
     def key_press(self, hwnd, vk_key):
         win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_key, 0)
@@ -357,10 +375,4 @@ class ProcessController(object):
                     _gw.destroyAll()
                     
         self.app.listProcess.delete(0, END)
-        self.app.listProcessActivated.delete(0, END)        
-        
-    def tabChanged(self, *args):
-        _name = self.app.notebook.tab(self.app.notebook.select(), "text")
-        for _gw in self.lineage_window_list:
-            if _gw.name == _name:
-                _gw.setForeground()
+        self.app.listProcessActivated.delete(0, END)
