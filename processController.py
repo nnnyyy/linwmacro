@@ -208,9 +208,7 @@ class ProcessController(object):
         loopTerm = float(self.app.tbLoopTerm.get())       
         
         import psutil
-        import os
-        
-        while not self.stop_threads.is_set():               
+        while not self.stop_threads.is_set():            
             cpu = psutil.cpu_percent()
             memory_usage_dict = dict(psutil.virtual_memory()._asdict())
             memory_usage_percent = memory_usage_dict['percent']
@@ -239,6 +237,7 @@ class ProcessController(object):
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
+        
                 try:                             
                     TId, pid = win32process.GetWindowThreadProcessId(lw_hwnd)
                     current_process = psutil.Process(pid)
@@ -277,11 +276,17 @@ class ProcessController(object):
                     logging.error(f'{lw_title} -  {e}')
                     self.app.post_message(f'{lw_title} : {e}')
                     _gw.setPause(True)
+                    self.removeFromProcList(_gw)
                     break
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0
             time.sleep(_gap)  
+            
+    def removeFromProcList(self, gw:GameWndState):
+        self.lineage_window_list = [item for item in self.lineage_window_list if item.name == gw.name]
+        self.app.listProcess.delete(self.app.listProcess.get(0, "end").index(gw.name))        
+        self.app.listProcessActivated.delete(self.app.listProcessActivated.get(0, "end").index(gw.name))        
             
     def checkDeactivatedList(self):
         if time.time() - self.tCheckActivate >= 60 * 5:
@@ -293,6 +298,7 @@ class ProcessController(object):
     def start(self, type=1):
         self.stop_threads.clear()
         self.thread = threading.Thread(target = self.onProcInThread, args=(type,))
+        self.thread.setDaemon(True)
         self.thread.start()
         self.app.btnSortWnd1["state"] = 'disabled'
         self.app.btnSortWnd3["state"] = "normal"
@@ -313,8 +319,8 @@ class ProcessController(object):
         if self.thread is None: return
 
         logging.debug('thread stopping...')
-        self.stop_threads.set()
-        self.thread.join()
+        self.stop_threads.set()        
+        self.thread.join(timeout=2.0)
         self.thread = None
         logging.debug('thread stopped')        
         

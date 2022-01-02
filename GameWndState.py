@@ -1,3 +1,4 @@
+import os
 import win32api
 import win32gui
 import win32ui
@@ -30,7 +31,8 @@ class GWState(Enum):
     GO_HUNT_BY_FAVORATE = 4,
     GO_HUNT_BY_TARGET = 5,
     MOVE_TO_TARGET = 6,
-    CHECK_MAIL = 7
+    CHECK_MAIL = 7,
+    WAIT_START = 8,
 
 """
 게임 윈도우 상태 관리 클래스    
@@ -49,11 +51,15 @@ class GameWndState:
         self.tAttackedAlertMsg = 0
         self.tAttackingStart = 0
         self.tHoldCancel = 0
+        self.tWaitAlert = 0
+        self.tWaitStart = 0
         self.app = app
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         self.setState(GWState.NORMAL)        
         
         self.cbvControlMode = tkinter.IntVar()
+        
+        self.wating = False
         
         self.initUI()
         
@@ -130,6 +136,7 @@ class GameWndState:
     def setPause(self, isPause):
         self.isPause = isPause
         self.tAutoHuntStart = time.time()
+        self.wating = False
         self.resetState()
         if isPause:
             self.btnPause["state"] = 'disabled'
@@ -251,6 +258,43 @@ class GameWndState:
         dy = y + h
         return self.uiCanvas[y:dy,x:dx]
     
+    def isWaiting(self):
+        return self.isMatching(self.img, self.app._imgWait)    
+    
+    def imwrite(self,filename, img, params=None):         
+        try: 
+            ext = os.path.splitext(filename)[1] 
+            result, n = cv2.imencode(ext, img, params) 
+            if result: 
+                with open(filename, mode='w+b') as f: 
+                    n.tofile(f) 
+                return True 
+            else: return False 
+        except Exception as e: 
+            print(e) 
+            return False    
+    
+    def sendWaitAlert(self):
+        if time.time() - self.tWaitAlert < 60 * 5: return
+                
+        if self.slackClient is None: return
+        
+        # self.sendAlertMsgDelay('대기열 진입을 기다리고 있습니다')       
+        
+        """
+        try:        
+            filePath = f"./{self.name}_wait.png"
+            self.imwrite(filePath, self.getImg(322,216,151,46))
+            self.slackClient.files_upload(channels=self.app.tbChannel.get(), file=filePath)
+        except Exception as e:
+            print(e)
+            pass
+        """
+        
+        self.tWaitAlert = time.time()
+        
+        pass
+    
     def updateUIOnly(self):
         self.screenshot()
         self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))  
@@ -261,9 +305,35 @@ class GameWndState:
             self.reserveState = GWState.NONE
             
         if self.isPaused():
-            return   
+            return
         
-        self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))  
+        if self.gameExitWnd():
+            self.key_press(win32con.VK_ESCAPE)
+            self.resetState()
+            return            
+        
+        self.updateHPMP(int(self.getHPPercent()), int(self.getMPPercent()))     
+        
+        if self.isWaiting():
+            self.wating = True
+            self.sendWaitAlert()
+            return
+        
+        if self.wating == True:
+            self.sendAlertMsgDelay('접속할 수 있습니다. ')
+            time.sleep(5)
+            self.click(680,385) # 게임 시작 버튼 누르기
+            self.tWaitStart = time.time()            
+            self.setState(GWState.WAIT_START)
+            self.wating = False
+            return
+        
+        if self.state == GWState.WAIT_START:
+            if time.time() - self.tWaitStart < 20: 
+                return
+            else:
+                self.setState(GWState.NORMAL)
+            
         
         if self.app.controller.actionLock != -1 and self.app.controller.actionLock != self.hwnd:
             return
@@ -306,13 +376,18 @@ class GameWndState:
             self.setState(GWState.NORMAL)
             return
         
-        # 절전모드와 관계없이 hp가 낮으면 귀환 우선 ( UI 모양이 절전모양과 같아서 체크 가능)
+        # 절전모드와 관계없이 hp가 낮으면 귀환 우선 (UI 모양이 절전모양과 같아서 체크 가능)
         if self.getHPPercent() <= 35:
             self.returnToVillage()  
             return
 
-        # 절전모드가 아니면 절전모드 진입 후에 매크로 체크
-        if self.isControlMode() != True and self.isPowerSaveMode() != True:
+        # 절전모드가 아닐때 일단 확인
+        if self.isControlMode() != True and self.isPowerSaveMode() != True:            
+            if self.isOnVill():
+                self.returnToVillage()
+                return
+            elif self.isAutoAttackingByNormalMode() == False:
+                self.key_press(0xBD)                       
             self.goPowerSaveMode()
             self.app.tConcourse = time.time()
             return     
@@ -364,6 +439,9 @@ class GameWndState:
     
     def isAutoAttacking(self):
         return self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
+    
+    def gameExitWnd(self):
+        return self.isMatching(self.img, self.app._imgGameExitWnd)
             
     def processOnPowerSaveMode(self):        
         isAutoAttacking = self.isAutoAttacking()
@@ -419,14 +497,14 @@ class GameWndState:
             return
             
         # 고정 되었다
-        if self.isAttacking() == False:      
+        if self.isAttacking() == False:
             self.tAttackingStart = time.time()
             self.key_press(win32con.VK_SPACE)
             return
             
-        # 5초 이상 공격 상태 지속이면 타겟을 바꿔준다 
         if self.tAttackingStart != 0 and (time.time() - self.tAttackingStart >= 5):
             self.tAttackingStart = time.time()
+        # 5초 이상 공격 상태 지속이면 타겟을 바꿔준다 
             self.key_press(win32con.VK_TAB)
         
         # 살짝 이동
@@ -782,6 +860,15 @@ class GameWndState:
         dst = cv2.inRange(self.img[306:306+18,698:698+19], (50,70,140), (90,120,255))        
         _arr2 = np.where(dst == 255)[0]      
         return _arr2.size > 0
+    
+    def isAutoAttackingByNormalMode(self):
+        x = 722
+        y = 241
+        w = 32
+        h = 32
+        dst = cv2.inRange(self.img[y:y+h,x:x+w], (50,70,140), (90,120,255))        
+        _arr2 = np.where(dst == 255)[0]    
+        return _arr2.size > 0
         
     def updateHPMP(self,hp,mp):        
         _tAutoHunt = int(time.time() - self.tAutoHuntStart)
@@ -790,7 +877,17 @@ class GameWndState:
         _tTotal = ''
         if _tAutoHuntHour > 0: _tTotal = f"{_tAutoHuntHour}시간 {int(_tAutoHuntMin % 60)}분"
         else: _tTotal = f"{_tAutoHuntMin}분"
-        self.lbvStatus.set(f"state:{self.getStateStr(self.state)}\n {_tTotal}")     
+        self.lbvStatus.set(f"state:{self.getStateStr(self.state)}\n {_tTotal}")    
+        
+        if self.isWaiting():
+            sx = 0
+            sy = 0
+            self.uiCanvas[sy:sy+46,sx:sx+151] = self.getImg(322,216,151,46) # 캐릭 및 레벨 사진
+            img = PIL.Image.fromarray(cv2.cvtColor(self.uiCanvas, cv2.COLOR_BGR2RGB))            
+            self.imgtk =  ImageTk.PhotoImage(image=img)
+            self.canvas.create_image(0,0,image=self.imgtk,anchor=tkinter.NW) 
+            return
+         
         if self.isControlMode():                               
             sx = 0
             sy = 0

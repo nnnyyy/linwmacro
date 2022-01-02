@@ -85,8 +85,8 @@ class ToolDlg( tkinter.Tk ):
         self._imgMapSearch = cv2.imread('./image/map_search.png', cv2.IMREAD_COLOR)       
         self._imgCheckHoldMove = cv2.imread('./image/checkHoldMove.png', cv2.IMREAD_COLOR)       
         self._imgGrayNotAttack = cv2.imread('./image/notattack.png', cv2.IMREAD_GRAYSCALE)
-        
-       
+        self._imgWait = cv2.imread('./image/wait.png', cv2.IMREAD_COLOR)
+        self._imgGameExitWnd = cv2.imread('./image/gameexitwnd.png', cv2.IMREAD_COLOR)
         
     def reloadSetting(self):
         with open('./setting.json', 'r', encoding='UTF8') as jsonfile:

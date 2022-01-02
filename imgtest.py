@@ -52,6 +52,7 @@ def enum_callback(hwnd, results):
 win32gui.EnumWindows(enum_callback, toplist)
 _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
 for (_h, _t) in _wnds:
+    if _t.index("홀홀") == -1: continue
     left, top, right, bot = win32gui.GetWindowRect(_h)
     w = right - left
     h = bot - top
@@ -84,7 +85,11 @@ for (_h, _t) in _wnds:
     win32gui.ReleaseDC(_h, hwndDC)
     
     img = cv2.cvtColor(np.array(im),  cv2.COLOR_RGB2BGR)
-    dst = cv2.inRange(img[306:306+18,698:698+19], (50,70,140), (90,120,255))        
+    x = 722
+    y = 241
+    w = 32
+    h = 32
+    dst = cv2.inRange(img[y:y+h,x:x+w], (50,70,140), (90,120,255))        
     _arr2 = np.where(dst == 255)[0]      
     print(_arr2.size > 0)
     
