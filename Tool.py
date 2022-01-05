@@ -36,6 +36,7 @@ class ToolDlg( tkinter.Tk ):
             '요정 숲 던전 2층',
             '요정 숲 던전 3층',
             '황무지',
+            '붉은 개미 군락',
             '개미굴 입구 1구역',
             '개미굴 입구 2구역',
             '개미굴 입구 3구역',
@@ -112,7 +113,7 @@ class ToolDlg( tkinter.Tk ):
         self.tbShortcutTeleport = tkinter.StringVar()
         self.tbShortcutTeleport.set("6")        
         self.tbLoopTerm = tkinter.StringVar()
-        self.tbLoopTerm.set("1")
+        self.tbLoopTerm.set("2")
         self.tbNonAttack = tkinter.StringVar()
         self.tbNonAttack.set("300")
         self.tbSlackToken = tkinter.StringVar()
@@ -191,12 +192,6 @@ class ToolDlg( tkinter.Tk ):
         _y+=dy
         
         Label(frame1, text="복귀 방식", fg='blue').place(x=0,y=_y)
-        
-        self.rbMoveType1 = Radiobutton(frame1, text="표식 이동", value=1, variable=self.rbvMoveType)
-        self.rbMoveType1.place(x=80, y=_y)
-        
-        self.rbMoveType2 = Radiobutton(frame1, text="즐겨찾기 이동", value=2, variable=self.rbvMoveType)
-        self.rbMoveType2.place(x=160, y=_y)
         
         self.rbMoveType3 = Radiobutton(frame1, text="타겟 이동", value=3, variable=self.rbvMoveType)
         self.rbMoveType3.place(x=240, y=_y)

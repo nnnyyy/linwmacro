@@ -186,6 +186,7 @@ class GameWndState:
         self.reserveState = _state
         
     def setState(self, _state:GWState) :
+        logging.debug(f'{self} - 상태 변경 {_state}')
         self.state = _state
         self.tAction = time.time()
         if _state == GWState.GO_HUNT:
@@ -397,6 +398,7 @@ class GameWndState:
         # 절전모드가 아닐때 일단 확인
         if self.isControlMode() != True and self.isPowerSaveMode() != True:            
             if self.isOnVill():
+                logging.debug(f'{self} - 마을 감지')
                 self.returnToVillage()
                 return
             elif self.isAutoAttackingByNormalMode() == False:
@@ -793,9 +795,12 @@ class GameWndState:
         else:
             # 텔로 이동할 경우
             time.sleep(2)
-            logging.debug(f'{self} - 자동 사냥 시작')
+            logging.debug(f'{self} - 자동 사냥 시작(텔)')
             self.tAutoHuntStart = time.time()
-            self.key_press(0xBD)
+            self.screenshot()
+            if self.isAutoAttackingByNormalMode() == False:
+                self.key_press(0xBD)
+            time.sleep(0.3)
             #self.click(736,257)
             self.goPowerSaveMode()
             self.setState(GWState.NORMAL)

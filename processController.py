@@ -311,7 +311,8 @@ class ProcessController(object):
         self.app.tbLoopTermUI["state"] = 'disabled'
         self.app.tbNonAttackUI["state"] = 'disabled'
         self.app.tbSlackTokenUI["state"] = 'disabled'
-        self.app.tbChannelUI["state"] = 'disabled'        
+        self.app.tbChannelUI["state"] = 'disabled'   
+        self.app.tbShortcutTeleportUI["state"] = 'disabled'
 
     def click(self, x, y):
         (prevX,prevY) = pyautogui.position()
@@ -337,6 +338,7 @@ class ProcessController(object):
         self.app.tbNonAttackUI["state"] = 'normal'
         self.app.tbSlackTokenUI["state"] = 'normal'
         self.app.tbChannelUI["state"] = 'normal'
+        self.app.tbShortcutTeleportUI["state"] = 'normal'
         #self.app.lbState.set("대기 중")         
 
     def key_press(self, hwnd, vk_key):
