@@ -33,6 +33,7 @@ class GWState(Enum):
     MOVE_TO_TARGET = 6,
     CHECK_MAIL = 7,
     WAIT_START = 8,
+    READY_TO_RETURN = 9,
 
 """
 게임 윈도우 상태 관리 클래스    
@@ -191,6 +192,11 @@ class GameWndState:
             self.goHuntCntEnd = 0
 
         self.tReturnToVillSometimes = time.time()
+        
+        if self.state != GWState.NORMAL:
+            self.app.controller.actionLock = self.hwnd
+        else:
+            self.app.controller.actionLock = -1
             
     def getStateStr(self, _state:GWState) :
         if( _state == GWState.NORMAL ): return '일반'
@@ -336,6 +342,13 @@ class GameWndState:
             
         
         if self.app.controller.actionLock != -1 and self.app.controller.actionLock != self.hwnd:
+            return
+        elif self.app.controller.actionLock == self.hwnd and self.state != GWState.NORMAL and time.time() - self.tAction >= 120:
+            self.setState(GWState.NORMAL)
+            return
+        
+        if self.state == GWState.READY_TO_RETURN:
+            self.returnToVillage()
             return
         
         isPowerSaveMenu = self.isMatching(self.img, self.app._imgPowerSaveMenu)
@@ -492,7 +505,7 @@ class GameWndState:
                 self.useTripleShot()
                 
         # 고정 사격 테스트
-        if self.checkHoldMove() == False and time.time() - self.tHoldCancel >= 2:
+        if self.checkHoldMove() == False:
             self.key_press(ord('H'))
             return
             
@@ -508,9 +521,11 @@ class GameWndState:
             self.key_press(win32con.VK_TAB)
         
         # 살짝 이동
+        """
         if time.time() - self.tHoldCancel >= 15:
             self.tHoldCancel = time.time()
             self.key_press(ord('H'))
+        """
             
     def sendAlertMsgDelay(self, msg):
         tNonAttackTerm = int(self.app.tbNonAttack.get())
@@ -597,8 +612,7 @@ class GameWndState:
                 pos = self.getMatchPos(self.img, self.app._imgCheckShopBtnWithMove)
                 self.click(pos[0] + 5,pos[1] + 5)
                 logging.debug(f'{self} - 잡화상점으로 이동합니다')
-                self.setState(GWState.GO_BUY_POSION)
-                self.app.controller.actionLock = self.hwnd
+                self.setState(GWState.GO_BUY_POSION)                
             else:
                 # 일단 다른 캐릭에게 처리 양보
                 self.click(224,302)
@@ -625,14 +639,11 @@ class GameWndState:
             else:
                 self.goTarget()
                 self.setState(GWState.GO_HUNT_BY_TARGET)
-            
-            self.app.controller.actionLock = -1
             return True
         else:
             if (time.time() - self.tAction) >= 60:
                 logging.debug(f'{self} - 상점 이동 실패')
                 self.setState(GWState.RETURN_TO_VILL)
-                self.app.controller.actionLock = -1
                 return False
             
             # 아직 이동 중
@@ -709,6 +720,9 @@ class GameWndState:
     def reserveCheckMail(self):
         self.setReserveState(GWState.CHECK_MAIL)
         
+    def reserveReturnToVill(self):
+        self.setReserveState(GWState.READY_TO_RETURN)
+        
     def checkMail(self):
         self.key_press(win32con.VK_ESCAPE)
         time.sleep(0.5)
@@ -783,6 +797,7 @@ class GameWndState:
             self.tAutoHuntStart = time.time()
             self.key_press(0xBD)
             #self.click(736,257)
+            self.goPowerSaveMode()
             self.setState(GWState.NORMAL)
             pass
             
@@ -798,7 +813,7 @@ class GameWndState:
         
     def getHPPercent(self):
         img = cv2.cvtColor(np.array(self.img),  cv2.COLOR_RGB2BGR)
-        img_hp = img[24:25,68:218]
+        img_hp = img[25:26,68:218]
         img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
         ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
         _arr = dst[0][::-1]
@@ -816,15 +831,15 @@ class GameWndState:
                         
             _temp = x
             
-            if _cnt >= 7:
-                _findidx = x - 6
+            if _cnt >= 13:
+                _findidx = x - 12
                 break 
         _rate = 100 - (_findidx / _arr.size) * 100
         return _rate
     
     def getMPPercent(self):
         img = cv2.cvtColor(np.array(self.img),  cv2.COLOR_RGB2BGR)
-        img_hp = img[35:36,68:218]
+        img_hp = img[36:37,68:218]
         img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
         ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
         _arr = dst[0][::-1]
@@ -842,8 +857,8 @@ class GameWndState:
                         
             _temp = x
             
-            if _cnt >= 7:
-                _findidx = x - 6
+            if _cnt >= 13:
+                _findidx = x - 12
                 break 
         _rate = 100 - (_findidx / _arr.size) * 100
         return _rate

@@ -136,6 +136,7 @@ class ToolDlg( tkinter.Tk ):
         menu_1.add_command(label="설정 리로드", command=self.reloadSetting)
         menu_1.add_command(label="설정 저장", command=self.saveSetting)        
         menu_1.add_command(label="우편함 보상 받기", command=self.controller.getMailPresent)
+        menu_1.add_command(label="단체 귀환", command=self.controller.allReturn)
         self.config(menu=menubar)
         
         

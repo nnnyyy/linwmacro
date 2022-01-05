@@ -170,7 +170,12 @@ class ProcessController(object):
     def getMailPresent(self):
         for gw in self.lineage_window_list:
             gw.reserveCheckMail()
-        pass        
+        pass   
+    
+    def allReturn(self):
+        for gw in self.lineage_window_list:
+            gw.reserveReturnToVill()
+        pass     
 
     def setForegroundWndByDoubleClick(self, event):
         if len(self.app.listProcess.curselection()) > 1: return
