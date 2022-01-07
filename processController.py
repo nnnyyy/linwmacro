@@ -5,6 +5,7 @@ import win32con
 import win32api
 import win32process
 from ctypes import windll
+from datetime import datetime, timedelta
 import time
 import numpy as np
 import win32com.client
@@ -28,6 +29,7 @@ class ProcessController(object):
         self.app = app        
         self.tCheckActivate = time.time()           
         self.actionLock = -1
+        self.dtLastRadonAlarm = datetime(1900,1,1,0,0,0)
         
         logging.debug(f'컨트롤러 생성')
         
@@ -165,6 +167,8 @@ class ProcessController(object):
                 continue;
             
             _gw.setHuntMap(self.app.comboMapList.get())
+            
+        self.app.saveSetting()
         pass
             
     def getMailPresent(self):
@@ -220,28 +224,18 @@ class ProcessController(object):
             #print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
             _tStart = time.time()
             
-            if cpu >= 100:
-                # UI 상태 초기화
-                """
-                self.app.btnSortWnd3["state"] = "disabled"
-                self.app.btnSortWnd1["state"] = 'normal'     
-                self.app.tbShortcutUI["state"] = 'normal'
-                self.app.tbLoopTermUI["state"] = 'normal'
-                self.app.tbNonAttackUI["state"] = 'normal'
-                self.app.tbSlackTokenUI["state"] = 'normal'
-                self.app.tbChannelUI["state"] = 'normal'
-                #self.app.lbState.set("대기 중")         
-                self.stop_threads.set()
-                self.app.post_message(f'cpu: {cpu}%, mem : {memory_usage_percent}% - 매크로 종료')
-                """
-                continue
-            
             self.checkDeactivatedList()
             _gw: GameWndState
             
             for _gw in self.lineage_window_list:
                 lw_hwnd = _gw.hwnd
                 lw_title = _gw.name
+                
+                # 라돈 시간 알림
+                now = datetime.now()
+                if now.hour == 14 and now.minute == 54 and (now - self.dtLastRadonAlarm).days > 0:
+                    self.dtLastRadonAlarm = now
+                    self.app.post_message('라돈 잡아라~')
         
                 try:                             
                     TId, pid = win32process.GetWindowThreadProcessId(lw_hwnd)

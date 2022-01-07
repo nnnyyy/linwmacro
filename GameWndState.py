@@ -399,10 +399,10 @@ class GameWndState:
         if self.isControlMode() != True and self.isPowerSaveMode() != True:            
             if self.isOnVill():
                 logging.debug(f'{self} - 마을 감지')
-                self.returnToVillage()
+                self.setState(GWState.RETURN_TO_VILL)
                 return
-            elif self.isAutoAttackingByNormalMode() == False:
-                self.key_press(0xBD)                       
+            elif self.isAutoAttacking() == False:
+                self.key_press(0xBD)
             self.goPowerSaveMode()
             self.app.tConcourse = time.time()
             return     
@@ -452,8 +452,31 @@ class GameWndState:
     def isControlMode(self):
         return self.cbvControlMode.get() == 1
     
-    def isAutoAttacking(self):
+    # 스페이스바 공격 체크
+    def isAttacking(self):              
+        dst = cv2.inRange(self.img[306:306+18,698:698+19], (50,70,160), (90,120,255))        
+        _arr2 = np.where(dst == 255)[0]      
+        return _arr2.size > 0
+    
+    # 절전모드가 아닌 화면에서 자동 사냥 중인지 체크
+    def _isAutoAttackingByNormalMode(self):
+        x = 722
+        y = 241
+        w = 32
+        h = 32
+        dst = cv2.inRange(self.img[y:y+h,x:x+w], (50,70,160), (90,120,255))        
+        _arr2 = np.where(dst == 255)[0]    
+        return _arr2.size > 0
+    
+    # 절전모드 상태에서 자동 사냥 중인지 체크
+    def _isAutoAttacking(self):
         return self.isMatching(self.img[290:329,324:477], self.app._imgCheckAutoAttack)
+    
+    def isAutoAttacking(self):
+        if self.isPowerSaveMode() and self._isAutoAttacking(): return True
+        elif self.isPowerSaveMode() == False and self._isAutoAttackingByNormalMode(): return True
+        
+        return False
     
     def gameExitWnd(self):
         return self.isMatching(self.img, self.app._imgGameExitWnd)
@@ -475,7 +498,7 @@ class GameWndState:
         if isDigit1:
             # 한자리 이하의 물약 상태 - 특정 픽셀의 색으로 판별한다.  
             # 최후에는 OCR 로 판별하도록 작업한다
-            self.returnToVillage()                
+            self.returnToVillage()
             return
 
         elif self.getHPPercent() <= 35:   
@@ -485,7 +508,7 @@ class GameWndState:
             self.sendAlertMsgDelay('가방이 가득차서 공격할 수 없습니다.')  
             return
 
-        if isAutoAttacking:                        
+        if isAutoAttacking:
             pass          
         else:
             # 공격 중이 아닌 상태
@@ -495,9 +518,8 @@ class GameWndState:
             # 2. 마을인지 확인
             if self.isOnVill():
                 # 2-1. 마을 이라면 잡화 상점 프로세스부터 진행
-                self.setState(GWState.RETURN_TO_VILL)                
-            else:
-                self.sendAlertMsgDelay('사냥 중이 아닙니다. 게임을 확인 해 주세요.')
+                self.setState(GWState.RETURN_TO_VILL)
+            else:                
                 self.screenshot()
                 self.returnToVillage()
                 
@@ -796,10 +818,8 @@ class GameWndState:
             # 텔로 이동할 경우
             time.sleep(2)
             logging.debug(f'{self} - 자동 사냥 시작(텔)')
-            self.tAutoHuntStart = time.time()
-            self.screenshot()
-            if self.isAutoAttackingByNormalMode() == False:
-                self.key_press(0xBD)
+            self.tAutoHuntStart = time.time()            
+            self.key_press(0xBD)
             time.sleep(0.3)
             #self.click(736,257)
             self.goPowerSaveMode()
@@ -868,27 +888,14 @@ class GameWndState:
         _rate = 100 - (_findidx / _arr.size) * 100
         return _rate
     
-    def setHuntMap(self, map):
+    def setHuntMap(self, map):        
         self.comboMapList.set(map)
+        self.setting["hunt_map"] = self.comboMapList.get()
         
     def changeHuntMap(self,event):
         self.setting["hunt_map"] = self.comboMapList.get()
         self.app.saveSetting()
         pass
-    
-    def isAttacking(self):              
-        dst = cv2.inRange(self.img[306:306+18,698:698+19], (50,70,140), (90,120,255))        
-        _arr2 = np.where(dst == 255)[0]      
-        return _arr2.size > 0
-    
-    def isAutoAttackingByNormalMode(self):
-        x = 722
-        y = 241
-        w = 32
-        h = 32
-        dst = cv2.inRange(self.img[y:y+h,x:x+w], (50,70,140), (90,120,255))        
-        _arr2 = np.where(dst == 255)[0]    
-        return _arr2.size > 0
         
     def updateHPMP(self,hp,mp):        
         _tAutoHunt = int(time.time() - self.tAutoHuntStart)
