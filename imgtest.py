@@ -22,6 +22,55 @@ from slack import WebClient
 from GameWndState import GameWndState, GWState
 import pytesseract
 
+def _isAutoAttackingByNormalMode(img):
+    x = 722
+    y = 241
+    w = 32
+    h = 32
+    dst = cv2.inRange(img[y:y+h,x:x+w], (50,70,160), (90,120,255))        
+    _arr2 = np.where(dst == 255)[0]    
+    cv2.imshow('dst', dst)
+    cv2.moveWindow('dst', 0,480)  
+    return _arr2.size > 0
+
+def getPosionNum(dst, val, findIdx):
+    ret = -1
+    _additionalCheck = dst[1][findIdx - val - 1]
+    _additionalCheck2 = dst[1][findIdx - val]
+    
+    print('add', val)
+    print('add2', _additionalCheck)
+    print('add3', _additionalCheck2)    
+    return ret
+
+def getMPPercent(img):
+    img = cv2.cvtColor(np.array(img),  cv2.COLOR_RGB2BGR)
+    img_hp = img[36:37,68:218]
+    img_hp_gray = cv2.cvtColor(img_hp, cv2.COLOR_BGR2GRAY)
+    ret, dst = cv2.threshold(img_hp_gray, 34, 255, cv2.THRESH_BINARY)    
+    cv2.imshow('dst', dst)   
+    _arr = dst[0][::-1]
+    _arr2 = np.where(_arr == 255)[0]
+    print(_arr2)
+    _temp = -1
+    _cnt = 0
+    _findidx = _arr.size
+    for x in _arr2:
+        if _temp == -1:             
+            _cnt = _cnt + 1
+        elif (x - _temp) > 2:
+            _cnt = 1            
+        elif (x - _temp) <= 1:
+            _cnt = _cnt + 1   
+                    
+        _temp = x
+        
+        if _cnt >= 13:
+            _findidx = x - 12
+            break 
+    _rate = 100 - (_findidx / _arr.size) * 100
+    return _rate
+
 range = 901
 val = 13
 
@@ -51,8 +100,7 @@ def enum_callback(hwnd, results):
 
 win32gui.EnumWindows(enum_callback, toplist)
 _wnds = [(_h, _t) for _h,_t in toplist if '리니지w l' in _t.lower() ]
-for (_h, _t) in _wnds:
-    if _t.index("홀홀") == -1: continue
+for (_h, _t) in _wnds:    
     left, top, right, bot = win32gui.GetWindowRect(_h)
     w = right - left
     h = bot - top
@@ -84,18 +132,41 @@ for (_h, _t) in _wnds:
     mfcDC.DeleteDC()        
     win32gui.ReleaseDC(_h, hwndDC)
     
-    img = cv2.cvtColor(np.array(im),  cv2.COLOR_RGB2BGR)
-    x = 722
-    y = 241
-    w = 32
-    h = 32
-    dst = cv2.inRange(img[y:y+h,x:x+w], (50,70,140), (90,120,255))        
-    _arr2 = np.where(dst == 255)[0]      
-    print(_arr2.size > 0)
+    img = cv2.cvtColor(np.array(im),  cv2.COLOR_RGB2BGR)    
+    img_posion = img[416:416 + 2,355:355 + 35]
+    img_posion_gray = cv2.cvtColor(img_posion, cv2.COLOR_BGR2GRAY)
+    ret, dst = cv2.threshold(img_posion_gray, 25, 255, cv2.THRESH_BINARY) 
+    _arr = dst[0]
+    _arr2 = np.where(_arr == 255)[0]
     
-    cv2.imshow('img', img)   
-    cv2.imshow('dst', dst)     
+    print('-------')
+    
+    _temp = -1
+    _val = 0
+    _vallist = []
+    _findidx = _arr.size
+    for x in _arr2:
+        if _temp == -1:
+            _val = 1
+        elif (x - _temp) <= 1:
+            _val = _val + 1
+        else:            
+            _vallist.append(getPosionNum(dst, _val, x))
+            _val = 1
+            
+        _temp = x  
+        pass
+        
+    
+    _vallist.append(getPosionNum(dst, _val, _temp))                 
+    
+    print('isAutoAttacking',_isAutoAttackingByNormalMode(img))
+    cv2.imshow('img', img)  
+    cv2.moveWindow('img', 0,0)      
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     
 cv2.destroyAllWindows()
+
+
+# 355,416, 35, 1
