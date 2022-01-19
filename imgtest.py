@@ -20,7 +20,7 @@ import PIL.Image
 from tkinter import *
 from slack import WebClient
 from GameWndState import GameWndState, GWState
-import pytesseract
+#import pytesseract
 
 def _isAutoAttackingByNormalMode(img):
     x = 722
@@ -42,6 +42,14 @@ def getPosionNum(dst, val, findIdx):
     print('add2', _additionalCheck)
     print('add3', _additionalCheck2)    
     return ret
+
+def isHoldMove(img):              
+    dst = cv2.inRange(img[344:344+25,6:6+25], (0,140,170), (10,170,200))        
+    _arr2 = np.where(dst == 255)[0]      
+
+    cv2.imshow('dst', dst)
+    cv2.moveWindow('dst', 0,480)  
+    return _arr2.size > 0
 
 def getMPPercent(img):
     img = cv2.cvtColor(np.array(img),  cv2.COLOR_RGB2BGR)
@@ -74,7 +82,7 @@ def getMPPercent(img):
 range = 901
 val = 13
 
-imgCheckHoldMove = cv2.imread('./image/checkHoldMove.png', cv2.IMREAD_COLOR)
+# imgCheckHoldMove = cv2.imread('./image/checkHoldMove.png', cv2.IMREAD_COLOR)
 
 """
 img2_cut = dst[862:862+mh, 851:851+mw]
@@ -160,7 +168,7 @@ for (_h, _t) in _wnds:
     
     _vallist.append(getPosionNum(dst, _val, _temp))                 
     
-    print('isAutoAttacking',_isAutoAttackingByNormalMode(img))
+    print('isHoldMove',isHoldMove(img))
     cv2.imshow('img', img)  
     cv2.moveWindow('img', 0,0)      
     cv2.waitKey(0)

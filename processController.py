@@ -29,7 +29,7 @@ class ProcessController(object):
         self.app = app        
         self.tCheckActivate = time.time()           
         self.actionLock = -1
-        self.dtLastRadonAlarm = datetime(1900,1,1,0,0,0)
+        self.dtLastRadonAlarm = datetime(1900,1,1,0,0,0)        
         
         logging.debug(f'컨트롤러 생성')
         
@@ -69,7 +69,7 @@ class ProcessController(object):
             
     def resetWnd(self):
         # 윈도우 리셋    
-        _temp = self.app.listProcessActivated.get(0, END)
+        # _temp = self.app.listProcessActivated.get(0, END)
         self.destroyWnds();        
         self.registerWnds()
         
@@ -112,9 +112,11 @@ class ProcessController(object):
                 _t_selected = self.app.listProcess.get(_idx)
                 if _t == _t_selected: _list_selected.append((_h,_t))
                 
+            """
             for _idx  in self.app.listProcessActivated.curselection():
                 _t_selected = self.app.listProcessActivated.get(_idx)
                 if _t == _t_selected: _list_selected.append((_h,_t))
+            """
         
         _list_selected.sort(key=lambda x:x[1])        
 
@@ -155,9 +157,11 @@ class ProcessController(object):
                 _t_selected = self.app.listProcess.get(_idx)
                 if _t == _t_selected: _list_selected.append(_t)
                 
+            """
             for _idx  in self.app.listProcessActivated.curselection():
                 _t_selected = self.app.listProcessActivated.get(_idx)
                 if _t == _t_selected: _list_selected.append(_t)
+            """
         
         _list_selected.sort(key=lambda x:x[1])
         for _gw in self.lineage_window_list:
@@ -189,17 +193,20 @@ class ProcessController(object):
             _finded = next((gw for gw in self.lineage_window_list if gw.name == _title), None)
             if _finded is not None:
                 pass
-                
+
+        """
         for i in self.app.listProcessActivated.curselection():
             _title = self.app.listProcessActivated.get(i)
             _finded = next((gw for gw in self.lineage_window_list if gw.name == _title), None)
             if _finded is not None:
                 pass
         """
+        
         for i in self.app.listProcess.curselection():
             hwnd = win32gui.FindWindow(None, self.app.listProcess.get(i))
             self.setForegroundWnd(hwnd)
 
+        """
         for i in self.app.listProcessActivated.curselection():
             hwnd = win32gui.FindWindow(None, self.app.listProcessActivated.get(i))
             self.setForegroundWnd(hwnd)
@@ -213,18 +220,18 @@ class ProcessController(object):
         #self.app.lbState.set("매크로 실행 중") 
         self.app.tConcourse = time.time()  
         
-        self.slackClient = WebClient(token=self.app.tbSlackToken.get())  
-        loopTerm = float(self.app.tbLoopTerm.get())       
+        self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         
         import psutil
         while not self.stop_threads.is_set():            
+            loopTerm = float(self.app.tbLoopTerm.get())       
             cpu = psutil.cpu_percent()
             memory_usage_dict = dict(psutil.virtual_memory()._asdict())
             memory_usage_percent = memory_usage_dict['percent']
             #print(f"BEFORE CODE: memory_usage_percent: {memory_usage_percent}%")
             _tStart = time.time()
             
-            self.checkDeactivatedList()
+            # self.checkDeactivatedList()
             _gw: GameWndState
             
             for _gw in self.lineage_window_list:
@@ -243,11 +250,13 @@ class ProcessController(object):
                     current_process_memory_usage_as_KB = current_process.memory_info()[0] / 2.**20                    
                     win32gui.ShowWindow(lw_hwnd, win32con.SW_NORMAL) 
                     
+                    """
                     activatedWndList = np.array(self.app.listProcessActivated.get(0,END))        
                     if np.size(np.where(activatedWndList == lw_title)) <= 0:
                         if memory_usage_percent < 80:
                             _gw.updateUIOnly()
-                        continue;
+                        continue
+                    """
                     
                     # print(f"{pid} : {lw_title} BEFORE CODE: Current memory KB   : {current_process_memory_usage_as_KB: 9.3f} KB")
                     if (memory_usage_percent >= 80 and current_process_memory_usage_as_KB >= 2500) or current_process_memory_usage_as_KB >= 5000:
@@ -272,20 +281,30 @@ class ProcessController(object):
                     
                 except Exception as e:
                     print(f'{lw_title} -  {e}')
-                    logging.error(f'{lw_title} -  {e}')
-                    self.app.post_message(f'{lw_title} : {e}')
-                    _gw.setPause(True)
-                    self.removeFromProcList(_gw)
+                    # logging.error(f'{lw_title} -  {e}')
+                    self.sendAlertMsgDelay(lw_title, e)
+                    # _gw.setPause(True)
+                    # self.removeFromProcList(_gw)
                     break
             
             _gap = loopTerm - (time.time() - _tStart)
             if _gap <= 0: _gap = 0
             time.sleep(_gap)  
+
+    def sendAlertMsgDelay(self, name, msg):
+        tNonAttackTerm = int(self.app.tbNonAttack.get())
+        _t = time.time() - self.app.tNoneAutoAttackAlertTime
+        if _t >= tNonAttackTerm:            
+            self.app.post_message(f'{name} : {msg}')
+            self.app.tNoneAutoAttackAlertTime = time.time()
+            return True
+        else:
+            return False
             
     def removeFromProcList(self, gw:GameWndState):
         self.lineage_window_list = [item for item in self.lineage_window_list if item.name == gw.name]
         self.app.listProcess.delete(self.app.listProcess.get(0, "end").index(gw.name))        
-        self.app.listProcessActivated.delete(self.app.listProcessActivated.get(0, "end").index(gw.name))        
+        # self.app.listProcessActivated.delete(self.app.listProcessActivated.get(0, "end").index(gw.name))        
             
     def checkDeactivatedList(self):
         if time.time() - self.tCheckActivate >= 60 * 5:
@@ -301,12 +320,12 @@ class ProcessController(object):
         self.thread.start()
         self.app.btnSortWnd1["state"] = 'disabled'
         self.app.btnSortWnd3["state"] = "normal"
-        self.app.tbShortcutUI["state"] = 'disabled'
-        self.app.tbLoopTermUI["state"] = 'disabled'
-        self.app.tbNonAttackUI["state"] = 'disabled'
+        # self.app.tbShortcutUI["state"] = 'disabled'
+        # self.app.tbLoopTermUI["state"] = 'disabled'
+        # self.app.tbNonAttackUI["state"] = 'disabled'
         self.app.tbSlackTokenUI["state"] = 'disabled'
         self.app.tbChannelUI["state"] = 'disabled'   
-        self.app.tbShortcutTeleportUI["state"] = 'disabled'
+        # self.app.tbShortcutTeleportUI["state"] = 'disabled' 
 
     def click(self, x, y):
         (prevX,prevY) = pyautogui.position()
@@ -327,12 +346,12 @@ class ProcessController(object):
         # UI 상태 초기화
         self.app.btnSortWnd3["state"] = "disabled"
         self.app.btnSortWnd1["state"] = 'normal'     
-        self.app.tbShortcutUI["state"] = 'normal'
-        self.app.tbLoopTermUI["state"] = 'normal'
-        self.app.tbNonAttackUI["state"] = 'normal'
+        # self.app.tbShortcutUI["state"] = 'normal'
+        # self.app.tbLoopTermUI["state"] = 'normal'
+        # self.app.tbNonAttackUI["state"] = 'normal'
         self.app.tbSlackTokenUI["state"] = 'normal'
         self.app.tbChannelUI["state"] = 'normal'
-        self.app.tbShortcutTeleportUI["state"] = 'normal'
+        # self.app.tbShortcutTeleportUI["state"] = 'normal'
         #self.app.lbState.set("대기 중")         
 
     def key_press(self, hwnd, vk_key):
@@ -352,9 +371,11 @@ class ProcessController(object):
 
     def moveDeactivate(self):
         wndNames = []
+        """
         for i in self.app.listProcessActivated.curselection():
             _name = self.app.listProcessActivated.get(i)
             wndNames.append(_name)
+        """
         
         for _name in wndNames:
             for _gw in self.lineage_window_list:
@@ -373,6 +394,7 @@ class ProcessController(object):
                     _gw.destroyAll()
         
         wndNames = []
+        """
         for _name in self.app.listProcessActivated.get(0, "end"):
             wndNames.append(_name)
             
@@ -380,6 +402,7 @@ class ProcessController(object):
             for _gw in self.lineage_window_list:
                 if _gw.name == _name: 
                     _gw.destroyAll()
+        """
                     
         self.app.listProcess.delete(0, END)
-        self.app.listProcessActivated.delete(0, END)
+        # self.app.listProcessActivated.delete(0, END)
