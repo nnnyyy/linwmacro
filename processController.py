@@ -16,8 +16,6 @@ from tkinter import *
 from slack import WebClient
 from GameWndState import GameWndState, GWState
 import logging
-import ctypes
-import psutil
 
 class ProcessController(object):
     from Tool import ToolDlg
@@ -96,7 +94,7 @@ class ProcessController(object):
                 x += 100
                 y += 50  
             self.setForegroundWnd(_gw.hwnd)    
-            time.sleep(0.1) 
+            time.sleep(0.1)
             
     def arragngeWndSelected(self):
         toplist = []
@@ -223,7 +221,22 @@ class ProcessController(object):
         self.slackClient = WebClient(token=self.app.tbSlackToken.get())          
         
         import psutil
-        while not self.stop_threads.is_set():            
+        prevX = -1
+        prevY = -1
+        while not self.stop_threads.is_set():       
+            (curX,curY) = pyautogui.position()     
+            if curX == prevX and curY == prevY:                
+                if time.time() - tMouseMoved > 2:
+                    pass
+                else:
+                    # print('macro stopped', time.time() - tMouseMoved)
+                    continue
+            else:
+                tMouseMoved = time.time()
+                prevX = curX
+                prevY = curY
+                continue
+            
             loopTerm = float(self.app.tbLoopTerm.get())       
             cpu = psutil.cpu_percent()
             memory_usage_dict = dict(psutil.virtual_memory()._asdict())

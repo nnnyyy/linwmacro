@@ -1,3 +1,4 @@
+from arduino import ArduinoMacro
 import requests
 import tkinter
 import time
@@ -53,6 +54,11 @@ class ToolDlg( tkinter.Tk ):
             '개미굴 2층 2구역',
             '개미굴 2층 3구역',
         ]
+        from win32api import GetSystemMetrics
+
+        print('Width:', GetSystemMetrics(0))
+        print('Height:', GetSystemMetrics(1))
+        self.arduino = ArduinoMacro()
         
         # json 옵션 파일 사용 예정
         if not os.path.exists('./setting.json'):
@@ -103,7 +109,7 @@ class ToolDlg( tkinter.Tk ):
         pass
         
     def initialize(self):
-        self.toolWidth = 590
+        self.toolWidth = 800
         self.toolHeight = 680
         self.title("MogulMogul v1.1")
         self.geometry(f"{self.toolWidth}x{self.toolHeight}+100+100")
@@ -133,12 +139,12 @@ class ToolDlg( tkinter.Tk ):
         self.notebook.place(x=10,y=_y)
         
         menubar=tkinter.Menu(self)
-        # menu_1=tkinter.Menu(menubar, tearoff=0)
-        # menubar.add_cascade(label="편의기능", menu=menu_1)
-        # menu_1.add_command(label="설정 리로드", command=self.reloadSetting)
-        # menu_1.add_command(label="설정 저장", command=self.saveSetting)        
-        # menu_1.add_command(label="우편함 보상 받기", command=self.controller.getMailPresent)
-        # menu_1.add_command(label="단체 귀환", command=self.controller.allReturn)
+        menu_1=tkinter.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="편의기능", menu=menu_1)
+        menu_1.add_command(label="설정 리로드", command=self.reloadSetting)
+        menu_1.add_command(label="설정 저장", command=self.saveSetting)        
+        menu_1.add_command(label="우편함 보상 받기", command=self.controller.getMailPresent)
+        menu_1.add_command(label="단체 귀환", command=self.controller.allReturn)
         self.config(menu=menubar)
         
         
